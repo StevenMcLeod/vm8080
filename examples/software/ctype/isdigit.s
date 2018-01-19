@@ -1,0 +1,23 @@
+/*
+ *  isdigit.s
+ *  Returns whether a character is a digit.
+ *
+ *  Inputs: Character
+ *  Returns: Boolean
+ *  Modifies:
+ *
+ *  int isdigit(char c) {
+ *      return (c >= '0') || (c <= '9');
+ *  }
+ *
+ *  Bytecode: x bytes.
+
+0xa6, 0x00, 0xa3, 0x04,
+0x12, 0x0e, 0x28, 0xb9, 0x03,
+0x11, 0x56, 0x48,
+0x11, 0x08, 0x20,
+0x9b, 0xbb, 0xf2
+
+ */
+
+ 

@@ -1,0 +1,270 @@
+DEFC    MSIZE   = 62
+DEFC    BIAS    = (MSIZE-20) * 1024
+DEFC    CCP     = 3400H + BIAS          ; CCP Base
+DEFC    BDOS    = CCP + 806H            ; BDOS Base
+DEFC    BIOS    = CCP + 1600H           ; BIOS Base
+DEFC    CDISK   = 0004H                 ; Selected Disk
+DEFC    IOBYTE  = 0003H                 ; Intel I/O Byte
+
+DEFC    DQTY    = 1                     ; One Disk Drive
+
+DEFC    DSKADDR = 0ffe0h
+
+;ORG     BIOS
+
+XDEF BOOT, WBOOT, CONST, CONIN, CONOUT, LIST, PUNCH, READER, HOME, SELDSK, SETTRK, SETSEC, SETDMA, READ, WRITE, PRSTAT, SECTRN
+
+BOOT:	JP	B_BOOT
+WBOOT:	JP	B_WBOOT
+CONST:	JP	B_CONST
+CONIN:	JP	B_CONIN
+CONOUT:	JP	B_CONOUT
+LIST:	JP	B_LIST
+PUNCH:	JP	B_PUNCH
+READER:	JP	B_READER
+HOME:	JP	B_HOME
+SELDSK:	JP	B_SELDSK
+SETTRK:	JP	B_SETTRK
+SETSEC:	JP	B_SETSEC
+SETDMA:	JP	B_SETDMA
+READ:	JP	B_READ
+WRITE:	JP	B_WRITE
+PRSTAT:	JP	B_PRSTAT
+SECTRN:	JP	B_SECTRN
+
+DPBASE:
+        ; DPH For Disk 0
+        DEFW    0h, 0h
+        DEFW    0h, 0h
+        DEFW    DIRBF, DPBLK
+        DEFW    CHK0, ALL0
+
+DPBLK:
+        ; Using Block Size 1KB
+        DEFW    26              ; Sectors per track
+        DEFB    3               ; Block Shift Factor
+        DEFB    7               ; Block Mask
+        DEFB    0               ; Null Mask
+        DEFW    242             ; Disk Size in Blocks - 1
+        DEFW    63              ; Directory Max
+        DEFB    192             ; Alloc 0
+        DEFB    0               ; Alloc 1
+        DEFW    16              ; Check Size
+        DEFW    2               ; Track Offset
+
+B_BOOT:
+        ; Disk should be loaded by this point
+        xor     a, a
+        ld      (IOBYTE), a
+        ld      (CDISK), a
+        jp      GOCPM
+
+B_WBOOT:
+        ; Disk should be read at this point
+        jp      GOCPM
+
+GOCPM:
+        ld      sp, 0100h       ; Temp Stack in Sector Buffer
+        ld      a, 0c3h
+        ld      (0), a
+        ld      hl, WBOOT
+        ld      (1), hl
+
+        ld      (5), a
+        ld      hl, BDOS
+        ld      (6), hl
+
+        ld      b, 80h
+        call    SETDMA
+
+        ld      a, (CDISK)
+        ld      c, a
+        jp      CCP
+
+B_CONST:
+        ld      a, 0ffh
+        ret
+
+B_CONIN:
+        in      a, (0)
+        and     a, 7fh
+        ret
+
+B_CONOUT:
+        ld      a, c
+        out     (0), a
+        ret
+
+B_LIST:
+        ld      a, c
+        ret
+
+B_PUNCH:
+        ld      a, c
+        ret
+
+B_READER:
+        ld      a, 1ah
+        and     a, 7fh
+        ret
+
+B_HOME:
+        xor     a, a
+        ld      (TRACK), a      ; Only use lower byte
+        ret
+
+B_SELDSK:
+        ld      hl, 0
+        ld      a, c
+        ld      (DISKNO), a
+        cp      a, DQTY
+        ret     nc              ; Disk drive not in range
+
+        ; Get DPH from table
+        ld      a, (DISKNO)
+        ld      l, a
+        ld      h, 0
+        add     hl, hl
+        add     hl, hl
+        add     hl, hl
+        add     hl, hl          ; HL*16 (size of header)
+        ld      de, DPBASE
+        add     hl, de
+        ret
+
+B_SETTRK:
+        ld      a, c
+        ld      (TRACK), a
+        ret
+
+B_SETSEC:
+        ld      a, c
+        ld      (SECTOR), a
+        ret
+
+B_SETDMA:
+        ld      l, c
+        ld      h, b
+        ld      (DMAADDR), hl
+        ret
+
+B_READ:
+        ld      c, 1        ; Read Command in C
+        call    DSKSETUP
+
+READ1:
+        ; Check if read completed
+        ld      a, (DSKADDR+0)
+        and     10h
+        jp      z, READ2
+
+        ld      a, (DSKADDR+1)
+        ld      (hl), a
+        inc     hl
+        jp      READ1
+
+READ2:
+        ; Get Result
+        ld      a, (DSKADDR+1)
+
+        xor     a, a
+        ret
+
+B_WRITE:
+        ld      c, 2        ; Write Command in C
+        call    DSKSETUP
+
+WRITE1:
+        ; Check if write completed
+        ld      a, (DSKADDR+0)
+        and     10h
+        jp      z, WRITE2
+
+        ld      a, (hl)
+        ld      (DSKADDR+1), a
+        inc     hl
+        jp      WRITE1
+
+WRITE2:
+        ld      a, (DSKADDR+1)
+
+        xor     a, a
+        ret
+
+; Pass in command to run in C
+; Returns DMA Adddress in HL
+DSKSETUP:
+        ; Check if Disk is ready
+        ld      a, (DSKADDR+0)
+        ld      b, a
+        and     a, 1
+        jp      z, DSKERR
+
+        ; Check if Drive busy
+        ld      a, b
+        and     a, 10h
+        jp      nz, DSKERR
+
+        ; Seek to specified track
+        ld      a, 8
+        ld      (DSKADDR+1), a
+        ld      a, (TRACK)
+        ld      (DSKADDR+1), a  ; Track Number
+
+        ; Get Seek Result
+        ld      a, (DSKADDR+1)
+        and     a, 3
+        jp      nz, DSKERR
+
+        ; Set up read
+        ld      a, c
+        ld      (DSKADDR+1), a  ; Command
+        xor     a, a
+        ld      (DSKADDR+1), a  ; Head Number
+        ld      a, (SECTOR)
+        ld      (DSKADDR+1), a  ; Sector Number
+        ld      a, 1
+        ld      (DSKADDR+1), a  ; Sector Quantity
+        ld      hl, (DMAADDR)
+
+        ret
+
+
+DSKERRRES:
+        ld      a, (DSKADDR+1)
+DSKERR:
+        ld      a, 1
+        ret
+
+B_PRSTAT:
+        xor     a, a
+        ret
+
+B_SECTRN:
+        ex      de, hl
+        add     hl, bc
+        ret
+        ld      l, c
+        ld      h, b
+        ret
+
+TRACK:
+        DEFS    2
+SECTOR:
+        DEFS    2
+DMAADDR:
+        DEFS    2
+DISKNO:
+        DEFS    1
+
+; SCRATCH RAM
+DEFC    BEGDAT  = ASMPC
+DIRBF:
+        DEFS    128
+ALL0:
+        DEFS    31
+CHK0:
+        DEFS    16
+
+DEFC    ENDDAT  = ASMPC
+DEFC    DATSIZE = ENDDAT - BEGDAT

@@ -1,0 +1,828 @@
+<html lang="en-us"><head>
+<meta charset="UTF-8">
+<meta name="description" content="My journey through the process of porting CP/M 2.2 to a new Z80 computer">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="keywords" content="Z80, homebuilt computer, homebuilt processor">
+<meta name="author" content="Donn Stewart">
+<title>Porting CP/M to a new computer</title>
+<link rel="stylesheet" href="/css/styles.css">
+<style></style></head>
+<body>
+<header id="desktopHeader">
+  <img src="/images/logo_float_blue_2.png" alt="c p u ville logo">
+  <div id="contactBlock">Donn Stewart<br>13917 Deviar Dr<br>Centreville, VA 20120<br>dstew@cpuville.com<br>
+  </div>
+  <h2>Designing, Building, and Selling Obsolete Computers -- for Educational Purposes -- since 2004</h2>
+</header>
+<header id="mobileHeader">
+  <img src="/images/logo_float_blue_2_small.png" alt="c p u ville logo">
+  <a id="menu_icon" href="javascript:void(0);" onclick="myFunction()"><img src="/images/menu_icon.png" alt="menu icon"></a>
+</header>
+<div class="topnav" id="myTopnav">
+  <div class="dropdown">
+  <button id="homeButton" class="dropbtn">Home</button>
+  </div>
+  <div class="dropdown">
+  <button class="dropbtn">Projects</button>
+    <div class="dropdown-content">
+    <a href="/Projects/Projects-home.html">Projects home</a>
+    <a href="/Projects/Z80-wire-wrap/Z80-wire-wrap-home.html">Z80 wire wrap</a>
+    <a href="/Projects/Original-CPU/Original-CPU-home.html">Original processor</a>
+    <a href="/Projects/8-bit/8-bit-home.html">8-bit processor</a>
+    </div>
+  </div>
+  <div class="dropdown">
+  <button class="dropbtn">Z80 Kits</button>
+    <div class="dropdown-content">
+    <a href="/Kits/Z80-kits-home.html">Z80 Kits home</a>
+    <a href="/Kits/Computer-kit.html">Computer kit</a>
+    <a href="/Kits/Bus-display-kit.html">Bus display kit</a>
+    <a href="/Kits/Logic-probe-kit.html">Logic probe kit</a>
+    <a href="/Kits/Serial-interface-kit.html">Serial interface kit</a>
+    <a href="/Kits/Disk-and-memory-expansion-kit.html">Disk and memory expansion kit</a>
+    <a href="/Kits/Accessories.html">Accessories</a>
+    <a href="/Kits/Instructions.html">Instructions</a>
+    <a href="/News-and-issues.html">News and issues</a>
+    <a href="/Kits/How-to-order.html">How to order</a>
+    </div>
+  </div>
+  <div class="dropdown">
+  <button class="dropbtn">Educational</button>
+    <div class="dropdown-content">
+    <a href="/Educational/Educational-home.html">Educational home</a>
+    <a href="/Educational/Logic-gates.html">Logic gates</a>
+    <a href="/Educational/Decoders.html">Decoders</a>
+    <a href="/Educational/Registers.html">Registers</a>
+    <a href="/Educational/Buffers.html">Buffers</a>
+    <a href="/Educational/AND-OR-array-logic.html">AND-OR array logic</a>
+    </div>
+  </div>
+  <div class="dropdown">
+  <button class="dropbtn">Code</button>
+    <div class="dropdown-content">
+    <a href="/Code/Z80.html">Z80 kits and projects</a>
+    <a href="/Code/Tiny-BASIC.html">Tiny BASIC</a>
+    <a href="/Code/CPM.html">CP/M</a>
+    <a href="/Code/Original-processor-code.html">Original processor</a>
+    <a href="/Code/8-bit-code.html">8-bit processor</a>
+    </div>
+  </div>
+  <div class="dropdown">
+  <button class="dropbtn">Videos</button>
+    <div class="dropdown-content">
+    <a href="/Videos/Z80-kit-videos.html">Z80 kit videos</a>
+    <a href="/Videos/8-bit-processor-videos.html">8-bit processor videos</a>
+    </div>
+  </div>
+  <div class="dropdown">
+  <button id="newsButton" class="dropbtn">News and issues</button>
+  </div>
+  <div class="dropdown">
+    <button class="dropbtn" id="sitemapButton">Site map</button>    
+  </div>
+  <div class="dropdown">
+    <button class="dropbtn" id="linksButton">Links</button>    
+  </div>
+  <div class="dropdown">
+    <button class="dropbtn" id="contactButton">Contact</button>      
+  </div>
+</div>
+
+<hr>
+<article>
+<h1>Setting up CP/M 2.2 on a New Z80 Computer</h1>
+<p>This is to document how I set up CP/M 2.2 to run on a newly created Z80-based microcomputer, intended as a kit for hobbyists or educators. The computer was designed to be extremely simple to build and understand, and as such does not implement interrupts or direct memory access, even though the Z80 can support these functions. My goal was to set up CP/M in the simplest way possible.</p>
+
+<h2>The System Architecture</h2>
+
+<h3>Memory Space</h3>
+
+<p>The computer system memory space takes on one of two configurations, software selected through OUT instructions to port 0 or port 1. In configuration 0, memory locations 0x0000 to 0x07FF are ROM, and locations 0x0800 to 0xFFFF are RAM. In configuration 1, the memory is all RAM from 0x0000 to 0xFFFF. This dual configuration is needed to solve the issue presented by the Z80 CPU's requirement that some code be present at location 0x0000 when it is started, and CP/M's requirement that location 0x0000 be available for RAM. There are other ways to solve this problem of course, but with 2K of ROM present in configuration 0, subroutines can be stored there that will aid in bringing up the CP/M system.</p>
+
+<h3>Input/Output Ports</h3>
+
+<p>As mentioned above, ports 0 and 1 are used to select the memory configuration. An OUT (0),A instruction selects configuration 0 (2K ROM + 62K RAM), and an OUT (1),A instruction selects configuration 1 (all-RAM). There is no data transferred by these instructions, and there are no input ports implemented at addresses 0 or 1.</p>
+
+<p>There is a single serial interface implemented that uses port addresses 2 and 3. Port 2 is the data input and output port, and port 3 is the UART status/control port. The port is initialized at system start (or system reset) by code in the ROM. It does not have to be initialized by CP/M.</p>
+
+<p>The single IDE disk interface uses input/output ports 8 through 15. Only the IDE command block registers are implemented; the control block registers, which are selected if CS3FX- is asserted, are not used (CS3FX- is tied to VCC). They are not needed for proper function of the disk interface. The disk is configured so that input and output data bits 0 though 7 are sent to the system data bus; bits 8 through 15 are ignored. This means that half the storage on the drive is not used, but it simplifies the hardware and software drive interface.</p>
+
+<h2>The Software</h2>
+
+<h3>The ROM System Monitor</h3>
+
+<p>The 2K ROM contains a system monitor program with several functions accessible from a simple command line interface, or as subroutines called by user programs. The ROM monitor assembly language file is <a href="./2K_ROM_8_asm.txt">here</a>, and the list file is <a href="./2K_ROM_8.lst">here</a>. There are commands to examine memory (dump), change memory (load), and run programs (run). There are commands to dump binary data from the memory to the serial port (bdump) and to load binary data from the serial port (bload). There are commands to read a disk sector and place it in memory (diskrd), and to write a sector to disk from memory (diskwr). Finally, there is a command to start CP/M (cpm), assuming it has been installed.</p>
+
+<h3>The RAM System Monitor</h3>
+
+<p>I made a copy of the ROM system monitor, assembled to address 0xDC00, so that it sits just below CP/M in the all-RAM memory configuration. This RAM monitor (the assembly language file is <a href="./RAM_monitor_asm.txt">here</a> and the listing is <a href="./RAM_monitor.lst">here</a>) is for use when ROM-type functions are needed with the computer memory in configuration 1 (all-RAM). It is needed for getting the first few programs into the CP/M system through the serial port. I also wrote a CP/M version of the RAM monitor, MONITOR.COM, that was assembled to location 0x0100. The MONITOR assembly language file is <a href="./MONITOR_ASM.TXT">here</a>, and the listing is <a href="./MONITOR.LST">here</a>. This program, when run, copies itself from location 0x0100 to location 0xDC00, to be clear of the 0x0100 address area where CP/M programs are loaded and run. It is useful for further loading of programs into CP/M by the serial port, without having to reset the computer, once CP/M is up and running.</p>
+
+<h3>CP/M 2.2</h3>
+
+<h4>Source Code and Manuals</h4>
+
+<p>CP/M is a very flexible operating system. It uses a standard core of system software that is almost entirely machine independent, other than the requirement for an 8080 or Z80 CPU. The standard core consists of the Console Command Processor (CCP) and the Basic Disk Operating System (BDOS). In addition to the standard, machine-independent core, there is a machine-dependent Basic Input/Output System (BIOS). The BIOS contains the drivers for the various hardware elements used by CP/M to operate the disk system and communicate through the input and output ports. It also contains the disk parameter tables that are used by CP/M to create and use the file system. The main task in creating a CP/M system for a new computer is to write a customized BIOS tailored to that new computer's architecture.</p>
+
+<p>The CP/M source code I used is found at <a href="http://www.cpm.z80.de/">The Unofficial CP/M Web Site</a>. The archive <a href="http://www.cpm.z80.de/download/cpm2-asm.zip">CP/M 2.2 ASM SOURCE</a> on the <a href="http://www.cpm.z80.de/source.html">Digital Research Sources page</a> on that site was used to build this system. The source file CPM22.Z80 was the one I assembled. This source contains the CCP and BDOS components of CP/M, along with a skeleton of the BIOS jump table (needed to assemble correctly). This source file is the work of Clark A. Calkins, and was obtained by disassembling a working system. The other CP/M sources on the web site were obtained from the original Digital Research documents by scanning and optical character recognition (OCR). As such, they have a few OCR-type errors, and are also in 8080 rather than Z80 assembly language. One can convert the 8080 to Z80 by using the awk script toZ80 (found at Github <a href="https://github.com/dex4er/deb-z88dk/tree/master/support/8080">here</a>). The script is not perfect, but most of the problems with translation are easy to recognize and fix. Nevertheless, just to get CP/M up and running, I used the CPM22.Z80 source.</p>
+
+<p>The CP/M 2.0 System Manual has been put on this web page: <a href="http://www.gaby.de/cpm/manuals/archive/cpm22htm/">www.gaby.de/cpm/manuals/archive/cpm22htm/</a>. This manual describes CP/M for the user, including the basic operating system commands. An OCR-derived CP/M 2.0 Alteration Guide document is present here also as <a href="http://www.gaby.de/cpm/manuals/archive/cpm22htm/ch6.htm#Section_6.1">chapter 6 of the System Manual</a>. A scan of the original Alteration Guide is available <a href="http://www.cpm.z80.de/randyfiles/DRI/CPM_2_0_System_Alteration_Guide.pdf">here</a>. The Alteration Guide explains how to create a new CP/M 2 system. However, it is targeted to a system with floppy drives, and assumes that one already has a CP/M 2 system up and running, and can use CP/M commands such as MOVECPM and DDT (the debugger program). I did not have this available. (Yes, I could have used one of the fine CP/M emulators out there, but I wanted to do everything from scratch.) However, the Alteration Guide was useful in a number of ways, as I will explain below. Finally, there is the CP/M 2.0 Interface Guide, which describes how to use CP/M features in user programs. A scanned copy of the Interface Guide can be found <a href="http://www.cpm.z80.de/randyfiles/DRI/CPM_2_0_Interface_Guide.pdf">here</a>.</p>
+
+<h4>CCP and BDOS Assembly</h4>
+
+<p>Only a few small changes were needed to assemble the CPM22.Z80 source for a 64K system. I set the code origin for the CCP to 0xE400. I adjusted a few zeros after the CCP to put the the BDOS entry at 0xEC06, and similarly at the end of the BDOS to make the BIOS entry at 0xFA00. These are the standard entry points for the CCP, BDOS, and BIOS according to the CP/M 2.0 Alteration Guide. I named the binary output file of this assembly cpm22.sys.</p>
+
+<h4>Creating the BIOS</h4>
+
+<p>I used the <a href="http://www.gaby.de/cpm/manuals/archive/cpm22htm/axb.htm">skeletal customizable BIOS code</a> found as an appendix to the CP/M Alteration Guide as the basis for a custom BIOS for this computer. This source was only available in 8080 code, so I had to translate it to Z80 code using the AWK script toZ80 as described above. There was one OCR error in the source, an 8080 DAD 0 instruction toward the end of the SELDSK subroutine that should have been DAD D, otherwise the code was correct. I had to fix a few translation errors as well. Using this source as the basis, I wrote the minimum amount of code needed to get CP/M working, as described below. The finished customized BIOS assembly language is <a href="./z80_cbios_asm.txt">here</a>, and the listing is <a href="./z80_cbios.lst">here</a>.</p>
+
+<h4>The BIOS Coding Tasks</h4>
+
+<p>There are several coding tasks needed to create a functional BIOS tailored for a certain computer system. One needs to write cold and warm boot routines, drivers for the input/output ports, drivers for the disk drive(s), and disk parameter tables.</p>
+
+<h4>Boot Routines and Disk Parameter Tables</h4>
+
+<p>The cold and warm start boot routines in the skeletal BIOS are written for the classical standard system with four 8-inch IBM floppy drives. I wanted to make as few changes to the skeletal BIOS source code as possible, so I left these subroutines intact. I also left the disk parameter tables essentially unchanged. See below for details on how CP/M, which thinks it is using four floppy disks, ends up using a 1 Gb hard disk.</p>
+
+<h4>Coding for the Console Input and Output</h4>
+
+<p>The CP/M Alteration Guide has fairly detailed explanations for what each BIOS subroutine requires, that is, which registers are used to convey information to the subroutine, and how data and error codes should be returned. The subroutines for console input and output are very simple, just single character output (CONOUT), single character input (CONIN), and input status query (CONST). Here is the code I wrote for these three subroutines:</p>
+<table>
+<tbody><tr><td>conin:	</td><td></td><td></td><td>;returns console character in register a</td></tr>
+<tr><td></td><td>	in 	</td><td>a,(3)		</td><td>;get status</td></tr>
+<tr><td></td><td>	and 	</td><td>002h		</td><td>;check RxRDY bit</td></tr>
+<tr><td></td><td>	jp 	</td><td>z,conin		</td><td>;loop until char ready</td></tr>
+<tr><td></td><td>	in 	</td><td>a,(2)		</td><td>;get char</td></tr>
+<tr><td></td><td>	AND	</td><td>7fh		</td><td>;strip parity bit</td></tr>
+<tr><td></td><td>	ret	</td><td></td><td></td></tr>
+<tr><td>;</td><td></td><td></td><td></td></tr>
+<tr><td>conout:	</td><td></td><td></td><td>;console character output from register c</td></tr>
+<tr><td></td><td>	in	</td><td>a,(3)</td></tr>
+<tr><td></td><td>	and	</td><td>001h		</td><td>;check TxRDY bit</td></tr>
+<tr><td></td><td>	jp	</td><td>z,conout	</td><td>;loop until port ready</td></tr>
+<tr><td></td><td>	ld	</td><td>a,c		</td><td>;get the char</td></tr>
+<tr><td></td><td>	out	</td><td>(2),a		</td><td>;out to port</td></tr>
+<tr><td></td><td>	ret</td></tr>
+<tr><td>;</td></tr>
+<tr><td>const:	</td><td></td><td></td><td>;console status, return 0ffh if character ready, 00h if not</td></tr>
+<tr><td></td><td>	in 	</td><td>a,(3)		</td><td>;get status</td></tr>
+<tr><td></td><td>	and 	</td><td>002h		</td><td>;check RxRDY bit</td></tr>
+<tr><td></td><td>	jp 	</td><td>z,no_char</td></tr>
+<tr><td></td><td>	ld	</td><td>a,0ffh		</td><td>;char ready</td></tr>	
+<tr><td></td><td>	ret</td></tr>
+<tr><td>no_char:&nbsp;</td><td>ld	</td><td>a,00h		</td><td>;no char</td></tr>
+<tr><td></td><td>	ret</td></tr>
+</tbody></table>
+<p>There are subroutines in the BIOS for character output to a list device (a printer), and for output to a punch device, and input from a reader device. The punch and reader subroutines were intended as drivers for a paper tape puncher and reader. These other character input and output drivers can be used for a variety of physical devices, but since my system has only one serial port, which is dedicated to the console, I simply left these drivers as they were in the skeletal BIOS -- simple returns without performing any actions.</p>
+
+<h4>Coding for the Disk System</h4>
+
+<p>The remainder of the subroutines in the BIOS have to do with disk input and output. As mentioned above, CP/M comes out of the era when essentially all systems used floppy disks. Floppy disk controllers are fairly complicated compared to modern IDE drives. Most were run using interrupt-driven, direct-memory access hardware, and often used subroutines present in a system ROM. These drives were typically much slower than the computer system, and there were timing issues to be dealt with in the driver software. Disk reading and writing errors were very common, and the software had to deal with these. The disk in a particular drive could be changed, and the software had to deal with this possibility also. So there is a lot of code in old BIOSes that is dedicated to running these floppy disks. An example of this complexity can be seen in a standard CP/M 2.2 BIOS here: <a href="http://www.gaby.de/cpm/manuals/archive/cpm22htm/axa.htm">www.gaby.de/cpm/manuals/archive/cpm22htm/axa.htm</a></p>
+
+<p>However, with the new Z80 system described here, an IDE disk interface to a hard disk is used instead. The disk interface is very simple. The disk is much faster than the system CPU, so there are no timing issues to worry about. Modern hard disks are essentially error-free. The disk cannot be changed. This makes the software to operate the disk very simple to write.</p>
+
+<h3>Subroutines Needed for Reading and Writing the Disk</h3>
+
+<h4>SETDMA, SELDSK, SETTRK, and SETSEC Subroutines</h4>
+
+<p>The CP/M BDOS accesses the disk by setting the memory address for a 128-byte sector buffer (SETDMA subroutine), selecting the disk to be accessed (SELDSK), and setting the track (SETTRK), and sector (SETSEC) to be accessed. In old BIOSes, especially those written for disk hardware using interrupts and direct memory access, these subroutines interacted directly with the disk hardware. Once these settings were made, a disk read or write command was given, and the software waited for the task to be finished. However, with the IDE disk, these subroutines need merely set variables in RAM to be used by the disk read and write subroutines. The SELDSK subroutine has additional code that returns the address to the proper disk parameter table header. More about the disk parameter tables later.</p>
+<table>
+<tbody><tr><td>;
+</td></tr><tr><td>setdma:	</td><td></td><td></td><td>;set dma address given by registers b and c</td></tr>
+<tr><td></td><td>	LD 	</td><td>l, c		</td><td>;low order address</td></tr>
+<tr><td></td><td>	LD 	</td><td>h, b		</td><td>;high order address</td></tr>
+<tr><td></td><td>	LD	</td><td>(dmaad),HL&nbsp;	</td><td>;save the address</td></tr>
+<tr><td></td><td>	ret
+</td></tr><tr><td>;
+</td></tr><tr><td>seldsk:	</td><td></td><td></td><td>;select disk given by register c</td></tr>
+<tr><td></td><td>	LD	</td><td>HL, 0000h	</td><td>;error return code</td></tr>
+<tr><td></td><td>	LD 	</td><td>a, c</td></tr>
+<tr><td></td><td>	LD	</td><td>(diskno),A</td></tr>
+<tr><td></td><td>	CP	</td><td>disks		</td><td>;must be between 0 and 3</td></tr>
+<tr><td></td><td>	RET	</td><td>NC		</td><td>;no carry if 4, 5,...</td></tr>
+<tr><td>;</td><td></td><td></td><td>	disk number is in the proper range</td></tr>
+<tr><td>;</td><td>	defs	</td><td>10		</td><td>;space for disk select</td></tr>
+<tr><td>;</td><td></td><td></td><td>	compute proper disk Parameter header address</td></tr>
+<tr><td></td><td>	LD	</td><td>A,(diskno)</td></tr>
+<tr><td></td><td>	LD 	</td><td>l, a		</td><td>;l=disk number 0, 1, 2, 3</td></tr>
+<tr><td></td><td>	LD 	</td><td>h, 0		</td><td>;high order zero</td></tr>
+<tr><td></td><td>	ADD&nbsp;	</td><td>HL,HL		</td><td>;*2</td></tr>
+<tr><td></td><td>	ADD	</td><td>HL,HL		</td><td>;*4</td></tr>
+<tr><td></td><td>	ADD	</td><td>HL,HL		</td><td>;*8</td></tr>
+<tr><td></td><td>	ADD	</td><td>HL,HL		</td><td>;*16 (size of each header)</td></tr>
+<tr><td></td><td>	LD	</td><td>DE, dpbase</td></tr>
+<tr><td></td><td>	ADD	</td><td>HL,DE		</td><td>;hl=,dpbase (diskno*16). Note typo "DAD 0" here in original 8080 source.</td></tr>
+<tr><td></td><td>	ret</td></tr>
+<tr><td>;</td></tr>
+<tr><td>settrk:	</td><td></td><td></td><td>;set track given by register c</td></tr>
+<tr><td></td><td>	LD 	</td><td>a, c</td></tr>
+<tr><td></td><td>	LD	</td><td>(track),A</td></tr>
+<tr><td></td><td>	ret</td></tr>
+<tr><td>;</td></tr>
+<tr><td>setsec:	</td><td></td><td></td><td>;set sector given by register c</td></tr>
+<tr><td></td><td>	LD 	</td><td>a, c</td></tr>
+<tr><td></td><td>	LD	</td><td>(sector),A</td></tr>
+<tr><td></td><td>	ret</td></tr>
+<tr><td>;</td></tr>
+</tbody></table>
+<h4>Disk READ and WRITE Subroutines</h4>
+
+<p>An important issue with CP/M 2.2 is the requirement for disk data to be handled in 128-byte pieces. This comes out of the floppy disk era when disk sectors were this size. Modern disks have larger sectors, 512 bytes in the IDE standard (although the hardware of this computer only uses 256 bytes of each sector). CP/M 2.2 has some available BIOS routines for sector deblocking, so that sector sizes larger than 128 bytes can be used, the software breaking up the larger sector into the 128-byte pieces that CP/M wants to see. We could use the CP/M sector deblocking code to make use of the full 256 bytes available in each sector, but with a 1 Gb hard drive, we do not need to preserve disk space. Therefore, in the interest of simplicity and understandability, I decided to use only 128 bytes of each sector. Yes, that means I am only using one-quarter of the available disk space, but this is still a vast disk space for an 8-bit system. The disk READ and WRITE subroutines below use a 256-byte host buffer for the physical access, and additional code sends to or receives from the 128-byte buffer set by the SETDMA subroutine the top 128 bytes of the 256 byte physical sector.</p>
+
+<p>Modern hard disks can use either cylinder-head-sector (CHS) addressing or logical block addressing (LBA). In LBA mode, the disk is presented as one long array of sectors, numbered from 0x000000 to 0x1FFFFF for a 1 Gb disk. I decided to use LBA to access the disk in a very simple way. The BIOS disk read and write subroutines set LBA bits 0 to 7 to the CP/M sector, bits 8 to 15 to the CP/M track, and bits 16 and 17 to the CP/M disk. For this scheme to work one needs at least a 340 Mb drive, but drives of this capacity are easily found. To use a disk of smaller capacity one would need to write code to translate the CP/M addressing to LBA addressing more efficiently, in a way that did not waste so much space. But, just to get it working, this is what I did.</p>
+
+<p>Here are the disk READ and WRITE subroutines for my customized BIOS:</p>
+<table>
+<tbody><tr><td>read:</td></tr>
+<tr><td>;Read one CP/M sector from disk.
+</td></tr><tr><td>;Return a 00h in register a if the operation completes properly, and 01h if an error occurs during the read.</td></tr>
+<tr><td>;Disk number in 'diskno'</td></tr>
+<tr><td>;Track number in 'track'</td></tr>
+<tr><td>;Sector number in 'sector'</td></tr>
+<tr><td>;Dma address in 'dmaad' (0-65535)</td></tr>
+<tr><td>;</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td></td><td>			ld	</td><td>hl,hstbuf		</td><td>;buffer to place disk sector (256 bytes)</td></tr>
+<tr><td>rd_status_loop_1:	</td><td>in	</td><td>a,(0fh)		</td><td>;check status</td></tr>
+<tr><td></td><td>			and	</td><td>80h			</td><td>;check BSY bit</td></tr>
+<tr><td></td><td>			jp	</td><td>nz,rd_status_loop_1	</td><td>;loop until not busy</td></tr>
+<tr><td>rd_status_loop_2:	</td><td>in	</td><td>a,(0fh)		</td><td>;check status</td></tr>
+<tr><td></td><td>			and	</td><td>40h			</td><td>;check DRDY bit</td></tr>
+<tr><td></td><td>			jp	</td><td>z,rd_status_loop_2	</td><td>;loop until ready</td></tr>
+<tr><td></td><td>			ld	</td><td>a,01h		</td><td>;number of sectors = 1</td></tr>
+<tr><td></td><td>			out	</td><td>(0ah),a		</td><td>;sector count register</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(sector)		</td><td>;sector</td></tr>
+<tr><td></td><td>			out	</td><td>(0bh),a		</td><td>;lba bits 0 - 7</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(track)		</td><td>;track</td></tr>
+<tr><td></td><td>			out	</td><td>(0ch),a		</td><td>;lba bits 8 - 15</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(diskno)		</td><td>;disk (only bits 16 and 17 used)</td></tr>
+<tr><td></td><td>			out	</td><td>(0dh),a		</td><td>;lba bits 16 - 23</td></tr>
+<tr><td></td><td>			ld	</td><td>a,11100000b		</td><td>;LBA mode, select host drive 0</td></tr>
+<tr><td></td><td>			out	</td><td>(0eh),a		</td><td>;drive/head register</td></tr>
+<tr><td></td><td>			ld	</td><td>a,20h		</td><td>;Read sector command</td></tr>
+<tr><td></td><td>			out	</td><td>(0fh),a</td></tr>
+<tr><td>rd_wait_for_DRQ_set:	</td><td>in	</td><td>a,(0fh)		</td><td>;read status</td></tr>
+<tr><td></td><td>			and	</td><td>08h			</td><td>;DRQ bit</td></tr>
+<tr><td></td><td>			jp	</td><td>z,rd_wait_for_DRQ_set</td><td>;loop until bit set</td></tr>
+<tr><td>rd_wait_for_BSY_clear:&nbsp;	</td><td>in	</td><td>a,(0fh)</td></tr>
+<tr><td></td><td>			and	</td><td>80h</td></tr>
+<tr><td></td><td>			jp	</td><td>nz,rd_wait_for_BSY_clear</td></tr>
+<tr><td></td><td>			in	</td><td>a,(0fh)		</td><td>;clear INTRQ</td></tr>
+<tr><td>read_loop:		</td><td>in	</td><td>a,(08h)		</td><td>;get data</td></tr>
+<tr><td></td><td>			ld	</td><td>(hl),a</td></tr>
+<tr><td></td><td>			inc	</td><td>hl</td></tr>
+<tr><td></td><td>			in	</td><td>a,(0fh)		</td><td>;check status</td></tr>
+<tr><td></td><td>			and	</td><td>08h			</td><td>;DRQ bit</td></tr>
+<tr><td></td><td>			jp	</td><td>nz,read_loop	</td><td>;loop until clear</td></tr>
+<tr><td></td><td>			ld	</td><td>hl,(dmaad)		</td><td>;memory location to place data read from disk</td></tr>
+<tr><td></td><td>			ld	</td><td>de,hstbuf		</td><td>;host buffer</td></tr>
+<tr><td></td><td>			ld	</td><td>b,128		</td><td>;size of CP/M sector</td></tr>
+<tr><td>rd_sector_loop:		</td><td>ld	</td><td>a,(de)		</td><td>;get byte from host buffer</td></tr>
+<tr><td></td><td>			ld	</td><td>(hl),a		</td><td>;put in memory</td></tr>
+<tr><td></td><td>			inc	</td><td>hl</td></tr>
+<tr><td></td><td>			inc	</td><td>de</td></tr>
+<tr><td></td><td>			djnz&nbsp;	</td><td>rd_sector_loop	</td><td>;put 128 bytes into memory</td></tr>
+<tr><td></td><td>			in	</td><td>a,(0fh)		</td><td>;get status</td></tr>
+<tr><td></td><td>			and	</td><td>01h			</td><td>;error bit</td></tr>
+<tr><td></td><td>			ret</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>write:</td></tr>
+<tr><td>;Write one CP/M sector to disk.</td></tr>
+<tr><td>;Return a 00h in register a if the operation completes properly, and 0lh if an error occurs during the read or write</td></tr>
+<tr><td>;Disk number in 'diskno'</td></tr>
+<tr><td>;Track number in 'track'</td></tr>
+<tr><td>;Sector number in 'sector'</td></tr>
+<tr><td>;Dma address in 'dmaad' (0-65535)</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td></td><td>			ld	</td><td>hl,(dmaad)		</td><td>;memory location of data to write</td></tr>
+<tr><td></td><td>			ld	</td><td>de,hstbuf		</td><td>;host buffer</td></tr>
+<tr><td></td><td>			ld	</td><td>b,128		</td><td>;size of CP/M sector</td></tr>
+<tr><td>wr_sector_loop:		</td><td>ld	</td><td>a,(hl)		</td><td>;get byte from memory</td></tr>
+<tr><td></td><td>			ld	</td><td>(de),a		</td><td>;put in host buffer</td></tr>
+<tr><td></td><td>			inc	</td><td>hl</td></tr>
+<tr><td></td><td>			inc	</td><td>de</td></tr>
+<tr><td></td><td>			djnz&nbsp;	</td><td>wr_sector_loop	</td><td>;put 128 bytes in host buffer</td></tr>
+<tr><td></td><td>			ld	</td><td>hl,hstbuf		</td><td>;location of data to write to disk</td></tr>
+<tr><td>wr_status_loop_1:	</td><td>in	</td><td>a,(0fh)		</td><td>;check status</td></tr>
+<tr><td></td><td>			and	</td><td>80h			</td><td>;check BSY bit</td></tr>
+<tr><td></td><td>			jp	</td><td>nz,wr_status_loop_1	</td><td>;loop until not busy</td></tr>
+<tr><td>wr_status_loop_2:	</td><td>in	</td><td>a,(0fh)		</td><td>;check	status</td></tr>
+<tr><td></td><td>			and	</td><td>40h			</td><td>;check DRDY bit</td></tr>
+<tr><td></td><td>			jp	</td><td>z,wr_status_loop_2	</td><td>;loop until ready</td></tr>
+<tr><td></td><td>			ld	</td><td>a,01h		</td><td>;number of sectors = 1</td></tr>
+<tr><td></td><td>			out	</td><td>(0ah),a		</td><td>;sector count register</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>			out	</td><td>(0bh),a		</td><td>;lba bits 0 - 7 = "sector"</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(track)</td></tr>
+<tr><td></td><td>			out	</td><td>(0ch),a		</td><td>;lba bits 8 - 15 = "track"</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(diskno)</td></tr>
+<tr><td></td><td>			out	</td><td>(0dh),a		</td><td>;lba bits 16 - 23, use 16 to 20 for "disk"</td></tr>
+<tr><td></td><td>			ld	</td><td>a,11100000b		</td><td>;LBA mode, select drive 0</td></tr>
+<tr><td></td><td>			out	</td><td>(0eh),a		</td><td>;drive/head register</td></tr>
+<tr><td></td><td>			ld	</td><td>a,30h		</td><td>;Write sector command</td></tr>
+<tr><td></td><td>			out	</td><td>(0fh),a</td></tr>
+<tr><td>wr_wait_for_DRQ_set:	</td><td>in	</td><td>a,(0fh)		</td><td>;read status</td></tr>
+<tr><td></td><td>			and	</td><td>08h			</td><td>;DRQ bit</td></tr>
+<tr><td></td><td>			jp	</td><td>z,wr_wait_for_DRQ_set&nbsp;</td><td>;loop until bit set</td></tr>			
+<tr><td>write_loop:		</td><td>ld	</td><td>a,(hl)</td></tr>
+<tr><td></td><td>			out	</td><td>(08h),a		</td><td>;write data</td></tr>
+<tr><td></td><td>			inc	</td><td>hl</td></tr>
+<tr><td></td><td>			in	</td><td>a,(0fh)		</td><td>;read status</td></tr>
+<tr><td></td><td>			and	</td><td>08h			</td><td>;check DRQ bit</td></tr>
+<tr><td></td><td>			jp	</td><td>nz,write_loop	</td><td>;write until bit cleared</td></tr>
+<tr><td>wr_wait_for_BSY_clear:&nbsp;	</td><td>in	</td><td>a,(0fh)</td></tr>
+<tr><td></td><td>			and	</td><td>80h</td></tr>
+<tr><td></td><td>			jp	</td><td>nz,wr_wait_for_BSY_clear</td></tr>
+<tr><td></td><td>			in	</td><td>a,(0fh)		</td><td>;clear INTRQ</td></tr>
+<tr><td></td><td>			and	</td><td>01h			</td><td>;check for error</td></tr>
+<tr><td></td><td>			ret</td></tr>
+<tr><td>;</td></tr>
+</tbody></table>
+<p>The label hstbuf points to a 256-byte area in RAM that holds the data after transfer from or before transfer to the disk. One might note the use of polling status bits to decide when all 256 bytes of data have been transferred. One can code ones own 256-byte counter, or use the 256-byte counter that is internal to the drive. I used the latter method here.</p>
+
+<h4>Disk Parameter Tables</h4>
+
+<p>CP/M needs a logical description of the disk system in order to operate properly. This description is needed by the system software that creates directories and files, and watches for available disk space. This description is held in a series of disk parameter tables in the BIOS, described in more detail below when I discuss the SECTRAN subroutine. The disk parameter tables do not need to be a true description of the actual physical disk drive(s), as long as one creates in the disk read and write subroutines a way to translate a BDOS request to read or write a particular logical disk sector into a read or write of a unique physical disk sector. The standard CP/M system, which is represented in the unmodified skeletal BIOS, has four 8" IBM floppy disks, each with 77 26-sector tracks (numbered 1 to 26), and a total capacity of about 250 Kb. This disk setup is also coded into the BIOS cold and warm start routines, which load the operating system from the disk into memory. Again, I decided to stick with this original, standard logical disk description, so that I was making the fewest changes to the skeletal BIOS as possible. Here are the disk parameter tables in my finished BIOS:</p>
+<table>
+<tbody><tr><td>;</td></tr>
+<tr><td>;	fixed data tables for four-drive standard</td></tr>
+<tr><td>;	ibm-compatible 8" disks</td></tr>
+<tr><td>;	no translations</td></tr>
+<tr><td>;</td></tr>
+<tr><td>;	disk Parameter header for disk 00</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>dpbase:	</td><td>defw&nbsp;	</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	</td><td>dirbf, dpblk</td></tr>
+<tr><td></td><td>	defw	</td><td>chk00, all00</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;	disk parameter header for disk 01</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>	defw	</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	&nbsp;</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	</td><td>dirbf, dpblk</td></tr>
+<tr><td></td><td>	defw	</td><td>chk01, all01</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;	disk parameter header for disk 02</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>	defw	</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	&nbsp;</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	</td><td>dirbf, dpblk</td></tr>
+<tr><td></td><td>	defw	</td><td>chk02, all02</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;	disk parameter header for disk 03</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>	defw	</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	&nbsp;</td><td>0000h, 0000h</td></tr>
+<tr><td></td><td>	defw	</td><td>dirbf, dpblk</td></tr>
+<tr><td></td><td>	defw	</td><td>chk03, all03</td></tr>
+<tr><td>;</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;	sector translate vector</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>trans:	</td><td>defm&nbsp;	 </td><td>1,  7, 13, 19	</td><td>;sectors  1,  2,  3,  4</td></tr>
+<tr><td></td><td>	defm	</td><td>25,  5, 11, 17	</td><td>;sectors  5,  6,  7,  6</td></tr>
+<tr><td></td><td>	defm	</td><td>23,  3,  9, 15	</td><td>;sectors  9, 10, 11, 12</td></tr>
+<tr><td></td><td>	defm	</td><td>21,  2,  8, 14	</td><td>;sectors 13, 14, 15, 16</td></tr>
+<tr><td></td><td>	defm	</td><td>20, 26,  6, 12&nbsp;	</td><td>;sectors 17, 18, 19, 20</td></tr>
+<tr><td></td><td>	defm	</td><td>18, 24,  4, 10	</td><td>;sectors 21, 22, 23, 24</td></tr>
+<tr><td></td><td>	defm	</td><td>16, 22		</td><td>;sectors 25, 26</td></tr>
+<tr><td>;</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>dpblk:	;disk parameter block for all disks.</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>	defw	&nbsp;</td><td>26		</td><td>;sectors per track</td></tr>
+<tr><td></td><td>	defm	</td><td>3		</td><td>;block shift factor</td></tr>
+<tr><td></td><td>	defm	</td><td>7		</td><td>;block mask</td></tr>
+<tr><td></td><td>	defm	</td><td>0		</td><td>;null mask</td></tr>
+<tr><td></td><td>	defw	</td><td>242&nbsp;		</td><td>;disk size-1</td></tr>
+<tr><td></td><td>	defw	</td><td>63		</td><td>;directory max</td></tr>
+<tr><td></td><td>	defm	</td><td>192		</td><td>;alloc 0</td></tr>
+<tr><td></td><td>	defm	</td><td>0		</td><td>;alloc 1</td></tr>
+<tr><td></td><td>	defw	</td><td>0		</td><td>;check size</td></tr>
+<tr><td></td><td>	defw	</td><td>2		</td><td>;track offset</td></tr>
+<tr><td>;</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;	end of fixed tables</td></tr>
+<tr><td>;</td></tr>
+</tbody></table>
+
+<p>The key table, labeled dpblk, is the description of the floppy disk. The block shift factor, block mask, and null mask are linked to the block size, here 1024 bytes. See the Alteration Guide for details. The disk size tells CP/M that the disk has 243 blocks available for data. The directory max value tells CP/M to use at most 64 directory entries for each disk. The allocation values are a bitmap that shows CP/M which disk areas have the directories. Check size is a value used with changeable disks, set to zero here because our system has a hard disk. This is the only value in the dpblk table that I changed. (Note: I could have left it unchanged though). The track offset tells CP/M to reserve the first two tracks of each disk for system files.</p>
+
+<h4>SECTRAN and the Big Bug</h4>
+
+<p>I suppose with any good-sized software project you end up with a bug that makes you want to pull your hair out and/or drives you to prayer. Here is the one that got me.</p>
+
+<p>You will notice the sector translate table in the code above. This is used by the BIOS SECTRAN subroutine to translate a logical sector request into a physical sector selection that is different from the logical sector. This was used by systems with floppy disks to increase efficiency, because the disk was much slower than the system, and waiting for a full disk rotation to read the next sector in physical order took a long time. So, the logical sectors were translated to physical sectors that were 6 sectors apart, all around the track. A simple system, easy to understand.</p>
+
+<p>The translation table is connected to the rest of the CP/M by the SECTRAN subroutine in the BIOS. A SELDSK call returns the address of the disk parameter header for a particular disk, and the first item in that header is a pointer to the translation table. (The other items in the disk parameter header point to buffers and scratch areas for use by the CP/M BDOS). In the Alteration Guide, we are told that if we put 0x0000 in the place where the translation table pointer belongs, no translation will be done. Of course, in my system, no translation is needed, so I put 0x0000 there.</p>
+
+<p>After this, I assembled my BIOS and tested it by placing it into memory using the ROM monitor bload command, and running short programs that used calls to the various BIOS routines for console input and output, and disk reads and writes. All worked perfectly. I prepared (formatted) the disk. I then created the CP/M system (essentially placed it into the first two sectors of the disk, as described in detail below). It worked -- sort of. CP/M would load and seem to start normally. But, directory listings were strange, sometimes one file was listed twice. Occasional disk read errors popped up. No amount of fiddling with the disk parameter table helped. I looked at the BDOS. Maybe some 8080 to Z80 translation error there. I looked at the CCP. Tried a few things. Hair pulling and prayer was done.</p>
+
+<p>At the Lord's prompting I took a closer look at the SECTRAN subroutine. I had not changed it, because the Alteration Guide said if I put zero in the disk parameter header, no translation would be done. I was lied to.</p>
+
+<p>Here is the original SECTRAN subroutine, fixed up after translation from the 8080 code by the toZ80 awk script. By fixed up I mean that the LD l,(hl) instruction originally came out as "LD l,m" -- the m should have been changed to (hl):</p>
+<table>
+<tbody><tr><td>sectran:</td></tr>
+<tr><td></td><td>	;translate the sector given by bc using the</td></tr>
+<tr><td></td><td>	;translate table given by de</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>	EX	</td><td>DE,HL&nbsp;		</td><td>;hl=.trans</td></tr>
+<tr><td></td><td>	ADD&nbsp;	</td><td>HL,BC	</td><td>;hl=.trans (sector)</td></tr>
+<tr><td></td><td>	LD 	</td><td>l, (hl)		</td><td>;l=trans (sector)</td></tr>
+<tr><td></td><td>	LD 	</td><td>h, 0		</td><td>;hl=trans (sector)</td></tr>
+<tr><td></td><td>	ret				</td><td></td><td>;with value in hl</td></tr>
+</tbody></table>
+
+<p>Note that there is no test to see if the pointer to the translation table (.trans) is zero. As such, if this subroutine is called, it will return a sector value that will be some random byte from the zero page of memory. I simply added a return after the exchange and addition of the logical sector and translation pointer (which will be zero), so it just returns the sector number it was called with:</p>
+<table>
+<tbody><tr><td>sectran:</td></tr>
+<tr><td></td><td>	;translate the sector given by bc using the</td></tr>
+<tr><td></td><td>	;translate table given by de</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>	EX	</td><td>DE,HL&nbsp;		</td><td>;hl=.trans</td></tr>
+<tr><td></td><td>	ADD&nbsp;	</td><td>HL,BC	</td><td>;hl=.trans (sector)</td></tr>
+<tr><td></td><td>	ret	</td><td>			</td><td>;debug no translation</td></tr>
+<tr><td></td><td>	LD 	</td><td>l, (hl)		</td><td>;l=trans (sector)</td></tr>
+<tr><td></td><td>	LD 	</td><td>h, 0		</td><td>;hl=trans (sector)</td></tr>
+<tr><td></td><td>	ret	</td><td>			</td><td>;with value in hl</td></tr>
+</tbody></table>
+
+<p>After this CP/M ran perfectly. Apparently, some routines in the BDOS were calling SECTRAN without checking to see if translation was on or off.</p>
+
+<p>Note that if I had not changed the first word in the disk parameter table header to zero all would have worked perfectly. That is, translation would have been done, but this would not be noticeable to the user. So, after everything, I learned that I did not need to make any changes at all in the disk parameter headers, or block tables, or the translate table to get CP/M to work properly on my system.</p>
+
+<h4>Preparing the Disk</h4>
+
+<p>This version of CP/M is meant to be installed into the first two tracks of the disk -- specifically track 0, sectors 2 though 26, and track 1, sectors 1 to 25. This is the area of the disk that the BIOS boot subroutines load into memory when CP/M is started or rebooted. I am referring to tracks on the the logical floppy disk described in the disk parameter tables -- remember we are using LBA to physically access the hard drive, translating the CP/M logical disk-track-sector numbers to a hard disk physical sector in the BIOS disk read and write subroutines. But, since the BIOS read and write subroutines are working perfectly when called after the appropriate SETDSK, SETDMA, SELTRK, and SELSEC calls, we will use these routines to access the disk whenever we can.</p>
+
+<p>But, before installing CP/M, we need to prepare the disk for the CP/M file system. This is an easy task, since the only thing CP/M needs to see are empty directories in the disk areas where the directories will be found, as described by the disk parameter tables. The CP/M directory entry is a simple structure. It is 32 bytes long. The very first byte is the status of the directory. An empty directory has a status byte of 0E5h. If CP/M sees this byte, it considers the directory entry available, and will create an entry there. The remainder of the directory entry structure does not have to be created ahead of time, we only need to put OE5h in the first byte of the 64 directory entries on each disk. In fact, it is easier than that -- we can just fill the whole disk with the byte 0E5h.</p>
+
+<p>To do this, I wrote a simple "format" program that calls the BIOS subroutines to fill each CP/M disk with 0E5h. I used the RAM monitor bload command to load the assembled BIOS into memory at 0xFA00, then loaded the format program at 0x0300, and ran it. Here is the format program:</p>
+<table>
+<tbody><tr><td>;Formats four classical CP/M disks</td></tr>
+<tr><td>;Writes E5h to 26 sectors on tracks 2 to 77 of each disk.</td></tr>
+<tr><td>;Uses calls to BIOS, in memory at FA00h</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>seldsk:		</td><td>equ	</td><td>0fa1bh		</td><td>;pass disk no. in c</td></tr>
+<tr><td>setdma:		</td><td>equ</td><td>	0fa24h		</td><td>;pass address in bc</td></tr>
+<tr><td>settrk:		</td><td>equ	</td><td>0fa1eh		</td><td>;pass track in reg C</td></tr>
+<tr><td>setsec:		</td><td>equ	</td><td>0fa21h		</td><td>;pass sector in reg c</td></tr>
+<tr><td>write:		</td><td>equ	</td><td>0fa2ah		</td><td>;write one CP/M sector to disk</td></tr>
+<tr><td>monitor_start:&nbsp;	</td><td>equ	</td><td>0dc00h</td></tr>
+<tr><td></td><td>		org	</td><td>0300h</td></tr>
+<tr><td></td><td>		ld	</td><td>sp,format_stack</td></tr>
+<tr><td></td><td>		ld	</td><td>a,00h		</td><td>;starting disk</td></tr>
+<tr><td></td><td>		ld	</td><td>(disk),a</td></tr>
+<tr><td>disk_loop:	</td><td>ld	</td><td>c,a		</td><td>;CP/M disk a</td></tr>
+<tr><td></td><td>		call&nbsp;	</td><td>seldsk</td></tr>
+<tr><td></td><td>		ld	</td><td>a,2		</td><td>;starting track (offset = 2)</td></tr>
+<tr><td></td><td>		ld	</td><td>(track),a</td></tr>
+<tr><td>track_loop:	</td><td>ld	</td><td>a,0		</td><td>;starting sector</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,directory_sector&nbsp;	</td><td>;address of data to write</td></tr>
+<tr><td></td><td>		ld	</td><td>(address),hl</td></tr>
+<tr><td></td><td>		ld	</td><td>a,(track)</td></tr>
+<tr><td></td><td>		ld	</td><td>c,a		</td><td>;CP/M track</td></tr>
+<tr><td></td><td>		call	</td><td>settrk</td></tr>
+<tr><td>sector_loop:	</td><td>ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		ld	</td><td>c,a		</td><td>;CP/M sector</td></tr>
+<tr><td></td><td>		call	</td><td>setsec</td></tr>
+<tr><td></td><td>		ld	</td><td>bc,(address)	</td><td>;memory location</td></tr>
+<tr><td></td><td>		call	</td><td>setdma</td></tr>
+<tr><td></td><td>		call	</td><td>write</td></tr>
+<tr><td></td><td>		ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		cp	</td><td>26</td></tr>
+<tr><td></td><td>		jp	</td><td>z,next_track</td></tr>
+<tr><td></td><td>		inc	</td><td>a</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		jp	</td><td>sector_loop</td></tr>
+<tr><td>next_track:	</td><td>ld	</td><td>a,(track)</td></tr>
+<tr><td></td><td>		cp	</td><td>77</td></tr>
+<tr><td></td><td>		jp	</td><td>z,next_disk</td></tr>
+<tr><td></td><td>		inc	</td><td>a</td></tr>
+<tr><td></td><td>		ld	</td><td>(track),a</td></tr>
+<tr><td></td><td>		jp	</td><td>track_loop</td></tr>
+<tr><td>next_disk:	</td><td>ld	</td><td>a,(disk)</td></tr>
+<tr><td></td><td>		inc	</td><td>a</td></tr>
+<tr><td></td><td>		cp	</td><td>4</td></tr>
+<tr><td></td><td>		jp	</td><td>z,done</td></tr>
+<tr><td></td><td>		ld	</td><td>(disk),a</td></tr>
+<tr><td></td><td>		jp	</td><td>disk_loop</td></tr>
+<tr><td>done:		</td><td>jp	</td><td>monitor_start</td></tr>
+<tr><td>disk:		</td><td>db	</td><td>00h</td></tr>
+<tr><td>sector:		</td><td>db	</td><td>00h</td></tr>
+<tr><td>track:		</td><td>db	</td><td>00h</td></tr>
+<tr><td>address:	</td><td>dw	</td><td>0000h</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>directory_sector:</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td></td><td>		ds&nbsp;&nbsp;&nbsp;	</td><td>128,0e5h&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>;sector filled with 0E5h</td></tr>
+<tr><td></td><td>		ds	</td><td>32		</td><td>;stack space</td></tr>
+<tr><td>format_stack:</td></tr>
+<tr><td></td><td>		end</td></tr>
+</tbody></table>
+
+
+<h3>Putting CP/M on the Disk</h3>
+
+<p>Once I had assembled the CCP, BDOS, and customized BIOS programs, the next thing was to put them onto the disk. For this I wrote a putsys program. It uses calls to BIOS subroutines to copy a memory image of CP/M onto tracks 0 and 1 of the CP/M disk. Note track 0 sector 1 is reserved for boot code, not needed here.</p>
+
+<p>This version of the putsys program was loaded and run from the ROM monitor.</p>
+<table>
+<tbody><tr><td>;Copies the memory image of CP/M loaded at E400h onto tracks 0 and 1 of the first CP/M disk</td></tr>
+<tr><td>;Load and run from ROM monitor</td></tr>
+<tr><td>;Uses calls to BIOS, in memory at FA00h</td></tr>
+<tr><td>;Writes track 0, sectors 2 to 26, then track 1, sectors 1 to 25</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>seldsk:		</td><td>equ	</td><td>0fa1bh&nbsp;		</td><td>;pass disk no. in c</td></tr>
+<tr><td>setdma:		</td><td>equ	</td><td>0fa24h		</td><td>;pass address in bc</td></tr>
+<tr><td>settrk:		</td><td>equ	</td><td>0fa1eh		</td><td>;pass track in reg C</td></tr>
+<tr><td>setsec:		</td><td>equ	</td><td>0fa21h		</td><td>;pass sector in reg c</td></tr>
+<tr><td>write:		</td><td>equ	</td><td>0fa2ah		</td><td>;write one CP/M sector to disk</td></tr>
+<tr><td>monitor_warm_start:&nbsp;	</td><td>equ	</td><td>046Fh	</td><td>;Return to ROM monitor</td></tr>
+<tr><td></td><td>		org	</td><td>0800h		</td><td>;First byte in RAM when memory in configuration 0</td></tr>
+<tr><td></td><td>		ld	</td><td>c,00h		</td><td>;CP/M disk a</td></tr>
+<tr><td></td><td>		call	</td><td>seldsk</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;Write track 0, sectors 2 to 26</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td></td><td>		ld	</td><td>a,2		</td><td>;starting sector</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,0E400h	</td><td>;start of CCP</td></tr>
+<tr><td></td><td>		ld	</td><td>(address),hl</td></tr>
+<tr><td></td><td>		ld	</td><td>c,0		</td><td>;CP/M track</td></tr>
+<tr><td></td><td>		call&nbsp;	</td><td>settrk</td></tr>
+<tr><td>wr_trk_0_loop:&nbsp;	</td><td>ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		ld	</td><td>c,a		</td><td>;CP/M sector</td></tr>
+<tr><td></td><td>		call	</td><td>setsec</td></tr>
+<tr><td></td><td>		ld	</td><td>bc,(address)	</td><td>;memory location</td></tr>
+<tr><td></td><td>		call	</td><td>setdma</td></tr>
+<tr><td></td><td>		call	</td><td>write</td></tr>
+<tr><td></td><td>		ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		cp	</td><td>26		</td><td>;done:</td></tr>
+<tr><td></td><td>		jp	</td><td>z,wr_trk_1	</td><td>;yes, start writing track 1</td></tr>
+<tr><td></td><td>		inc	</td><td>a		</td><td>;no, next sector</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,(address)</td></tr>
+<tr><td></td><td>		ld	</td><td>de,128</td></tr>
+<tr><td></td><td>		add	</td><td>hl,de</td></tr>
+<tr><td></td><td>		ld	</td><td>(address),hl</td></tr>
+<tr><td></td><td>		jp	</td><td>wr_trk_0_loop</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;Write track 1, sectors 1 to 25</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>wr_trk_1:	</td><td>ld	</td><td>c,1</td></tr>
+<tr><td></td><td>		call&nbsp;	</td><td>settrk</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,(address)</td></tr>
+<tr><td></td><td>		ld	</td><td>de,128</td></tr>
+<tr><td></td><td>		add	</td><td>hl,de</td></tr>
+<tr><td></td><td>		ld	</td><td>(address),hl</td></tr>
+<tr><td></td><td>		ld	</td><td>a,1</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td>wr_trk_1_loop:&nbsp;	</td><td>ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		ld	</td><td>c,a	</td><td>;CP/M sector</td></tr>
+<tr><td></td><td>		call	</td><td>setsec</td></tr>
+<tr><td></td><td>		ld	</td><td>bc,(address)</td><td>;memory location</td></tr>
+<tr><td></td><td>		call	</td><td>setdma</td></tr>
+<tr><td></td><td>		call	</td><td>write</td></tr>
+<tr><td></td><td>		ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		cp	</td><td>25</td></tr>
+<tr><td></td><td>		jp	</td><td>z,done</td></tr>
+<tr><td></td><td>		inc	</td><td>a</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,(address)</td></tr>
+<tr><td></td><td>		ld	</td><td>de,128</td></tr>
+<tr><td></td><td>		add	</td><td>hl,de</td></tr>
+<tr><td></td><td>		ld	</td><td>(address),hl</td></tr>
+<tr><td></td><td>		jp	</td><td>wr_trk_1_loop</td></tr>	
+<tr><td>done:		</td><td>jp	</td><td>monitor_warm_start</td></tr>
+<tr><td>sector:		</td><td>db	</td><td>00h</td></tr>
+<tr><td>address:	</td><td>dw	</td><td>0000h</td></tr>
+<tr><td></td><td>		end</td></tr>
+</tbody></table>
+
+<p>The file cpm.sys which contains the assembled code for the CCP and BDOS was first loaded into memory at location 0xE400. Then, the BIOS was loaded at location 0xFA00. Then the putsys program was loaded at location 0x0800 and run. The drive activity light went on, and then off, and CP/M was now on the disk.</p>
+
+<h3>The CP/M Loader</h3>
+
+<p>To get CP/M from the disk into the system memory at computer startup, I created a cpm_loader program. Note that CP/M uses disk sectors 1 to 26 of each track. That means that the hard disk LBA sector 0 was available for use. Once I assembled the cpm_loader, I put the machine code into LBA sector zero using the ROM monitor diskwr command.</p>
+
+<p>The ROM monitor, which starts when the computer is turned on, or taken out of reset, has a command cpm that loads the full 256 bytes of hard disk sector 0 into RAM at location 0x0800 and jumps to it. Here is the ROM monitor code:</p>
+<table>
+<tbody><tr><td>cpm_jump:&nbsp;		</td><td>ld	</td><td>hl,0800h</td></tr>
+<tr><td></td><td>			ld	</td><td>bc,0000h</td></tr>
+<tr><td></td><td>			ld	</td><td>e,00h</td></tr>
+<tr><td></td><td>			call&nbsp;	</td><td>disk_read</td></tr>
+<tr><td></td><td>			jp	</td><td>0800h</td></tr>
+</tbody></table>
+
+<p>It uses the ROM monitor disk_read subroutine that takes BC and E as the LBA, and HL as the memory area to write to. Here is the CP/M loader code:</p>
+<table>
+<tbody><tr><td>;Retrieves CP/M from disk and loads it in memory starting at E400h</td></tr> 
+<tr><td>;Uses calls to ROM subroutine for disk read.</td></tr>
+<tr><td>;Reads track 0, sectors 2 to 26, then track 1, sectors 1 to 25</td></tr>
+<tr><td>;This program is loaded into LBA sector 0 of disk, read to loc. 0800h by ROM disk_read subroutine, and executed.</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;</td></tr>
+<tr><td>hstbuf: 	</td><td>equ	</td><td>0900h		</td><td>;will put 256-byte raw sector here</td></tr>
+<tr><td>disk_read:	</td><td>equ	</td><td>0294h		</td><td>;subroutine in 2K ROM</td></tr>
+<tr><td>cpm:		</td><td>equ	</td><td>0FA00h		</td><td>;CP/M cold start entry in BIOS</td></tr>
+<tr><td></td><td>		org	</td><td>0800h		</td><td>;Start of RAM, configuration 0</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;Read track 0, sectors 2 to 26</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td></td><td>		ld	</td><td>a,2		</td><td>;starting sector -- sector 1 reserved</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,0E400h	</td><td>;memory address -- start of CCP</td></tr>
+<tr><td></td><td>		ld	</td><td>(dmaad),hl</td></tr>
+<tr><td></td><td>		ld	</td><td>a,0		</td><td>;CP/M track</td></tr>
+<tr><td></td><td>		ld	</td><td>(track),a</td></tr>
+<tr><td>rd_trk_0_loop:&nbsp;	</td><td>call&nbsp;	</td><td>read</td></tr>
+<tr><td></td><td>		ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		cp	</td><td>26</td></tr>
+<tr><td></td><td>		jp	</td><td>z,rd_trk_1</td></tr>
+<tr><td></td><td>		inc	</td><td>a</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,(dmaad)</td></tr>
+<tr><td></td><td>		ld	</td><td>de,128</td></tr>
+<tr><td></td><td>		add	</td><td>hl,de</td></tr>
+<tr><td></td><td>		ld	</td><td>(dmaad),hl</td></tr>
+<tr><td></td><td>		jp	</td><td>rd_trk_0_loop</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;Read track 1, sectors 1 to 25</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>rd_trk_1:	</td><td>ld	</td><td>a,1</td></tr>
+<tr><td></td><td>		ld	</td><td>(track),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,(dmaad)</td></tr>
+<tr><td></td><td>		ld	</td><td>de,128</td></tr>
+<tr><td></td><td>		add&nbsp;	</td><td>hl,de</td></tr>
+<tr><td></td><td>		ld	</td><td>(dmaad),hl</td></tr>
+<tr><td></td><td>		ld	</td><td>a,1		</td><td>;starting sector</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td>rd_trk_1_loop:&nbsp;	</td><td>call	</td><td>read</td></tr>
+<tr><td></td><td>		ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>		cp	</td><td>25</td></tr>
+<tr><td></td><td>		jp	</td><td>z,done</td></tr>
+<tr><td></td><td>		inc	</td><td>a</td></tr>
+<tr><td></td><td>		ld	</td><td>(sector),a</td></tr>
+<tr><td></td><td>		ld	</td><td>hl,(dmaad)</td></tr>
+<tr><td></td><td>		ld	</td><td>de,128</td></tr>
+<tr><td></td><td>		add	</td><td>hl,de</td></tr>
+<tr><td></td><td>		ld	</td><td>(dmaad),hl</td></tr>
+<tr><td></td><td>		jp	</td><td>rd_trk_1_loop</td></tr>	
+<tr><td>done:		</td><td>out	</td><td>(1),a		</td><td>;switch memory config to all-RAM</td></tr>
+<tr><td></td><td>		jp	</td><td>cpm		</td><td>;to BIOS cold start entry</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>read:</td></tr>
+<tr><td>;Read one CP/M sector from disk 0</td></tr>
+<tr><td>;Track number in 'track'</td></tr>
+<tr><td>;Sector number in 'sector'</td></tr>
+<tr><td>;Dma address (location in memory to place the CP/M sector) in 'dmaad' (0-65535)</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td></tr>
+<tr><td></td><td>			ld	</td><td>hl,hstbuf		</td><td>;buffer to place raw disk sector (256 bytes)</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(sector)</td></tr>
+<tr><td></td><td>			ld	</td><td>c,a			</td><td>;LBA bits 0 to 7</td></tr>
+<tr><td></td><td>			ld	</td><td>a,(track)</td></tr>
+<tr><td></td><td>			ld	</td><td>b,a			</td><td>;LBA bits 8 to 15</td></tr>
+<tr><td></td><td>			ld	</td><td>e,00h			</td><td>;LBA bits 16 to 23</td></tr>
+<tr><td></td><td>			call&nbsp;&nbsp;	</td><td>disk_read&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;	</td><td>;subroutine in ROM</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td>;Transfer top 128-bytes out of buffer to memory</td></tr>
+</tbody></table>
+<table>
+<tbody><tr><td></td><td>			ld	</td><td>hl,(dmaad)		</td><td>;memory location to place data read from disk</td></tr>
+<tr><td></td><td>			ld	</td><td>de,hstbuf		</td><td>;host buffer</td></tr>
+<tr><td></td><td>			ld	</td><td>b,128			</td><td>;size of CP/M sector</td></tr>
+<tr><td>rd_sector_loop:&nbsp;	</td><td>ld	</td><td>a,(de)			</td><td>;get byte from host buffer</td></tr>
+<tr><td></td><td>			ld	</td><td>(hl),a			</td><td>;put in memory</td></tr>
+<tr><td></td><td>			inc	</td><td>hl</td></tr>
+<tr><td></td><td>			inc	</td><td>de</td></tr>
+<tr><td></td><td>			djnz&nbsp;	</td><td>rd_sector_loop&nbsp;		</td><td>;put 128 bytes into memory</td></tr>
+<tr><td></td><td>			in	</td><td>a,(0fh)			</td><td>;get status</td></tr>
+<tr><td></td><td>			and	</td><td>01h			</td><td>;error bit</td></tr>
+<tr><td></td><td>			ret</td></tr>
+<tr><td>sector:		</td><td>db	</td><td>00h</td></tr>
+<tr><td>track:		</td><td>db	</td><td>00h</td></tr>
+<tr><td>dmaad:		</td><td>dw	</td><td>0000h</td></tr>
+<tr><td></td><td>		end</td></tr>
+</tbody></table>
+
+<p>The assembled code for this program takes up only 136 bytes so it fits easily into the single 256-byte sector alloted for it. I could also have put it into CP/M track 0 sector 1.</p>
+
+<h3>Loading Programs into CP/M through the Serial Interface</h3>
+
+<p>With CP/M loaded onto disk, to start it, one simply issues the cpm command at the ROM monitor prompt. The CP/M loader puts CP/M into its proper place in memory, changes the memory configuration to all-RAM, and jumps to the BIOS cold start entry point to start CP/M. The CP/M prompt A&gt; appears, and we can enter commands.</p>
+
+<p>CP/M has a small number of internal, or built-in commands -- DIR to list the directory of a disk to the screen, ERA to erase a file, and a few others. See the System Manual for details. But, there is no built-in command available to check disk space, copy files, edit text, assemble code, or do most other things that we would expect an operating system to do. There is no command to load a file into the disk through the serial port. Once CP/M is working properly, we need a way to get programs into the CP/M disk file system.</p>
+
+<p>Fortunately, there is a built-in command SAVE that will write code from memory into a CP/M file. The SAVE command will take a number of 256-byte pages from memory, starting at location 0x0100, and create a file. So, our task is to use the RAM monitor program bload command to load a CP/M program file through the serial port into memory at 0x0100, then use the CP/M SAVE command to create a program file. Once that file is created, to run the program, one types the program name at the CP/M prompt. CP/M loads the file into memory at location 0x0100, and jumps to that location to execute it.</p>
+
+<p>Since we only have one serial port, and CP/M dedicates that port to console input and output, we have to work around CP/M to do the binary loads through that port. To get the process started, we need to have the both the RAM monitor program and CP/M present in memory at the same time. To do this, we start by loading the RAM monitor at location 0xDC00, using the ROM monitor bload command. Once the RAM monitor is in the memory, we load CP/M into memory using the ROM monitor cpm command. Now, both programs are in memory at the same time, and we are running CP/M. But, we need to be in the RAM monitor to bload programs into memory. There is no CP/M command to jump to a particular memory location. How to get from CP/M to the RAM monitor?</p>
+
+<p>Simple. We reset the computer. A computer reset does nothing to the RAM system memory -- it leaves the memory 
+contents unchanged. If we reset the computer, then take it out of reset, we will be in the ROM monitor, with the 
+memory in configuration 0. Then we can use the run command to jump to the RAM monitor which is in memory at 0xDC00. 
+The first instruction in the RAM monitor changes the memory configuration to 1, so now we have access to the lower 
+RAM locations and can bload a program into memory at 0x0100 using the RAM monitor command line. Then, we go to CP/M 
+by using the monitor run command with the address 0xFA00 (BIOS cold start entry). (Note that even though the RAM 
+monitor, like the ROM monitor, has a cpm command, we must not use this to start CP/M, because it will load the cpm 
+loader program into memory at 0x0800, which might overwrite the program we previously loaded, the one we want to save.) 
+Jumping to location 0xFA00 in the BIOS re-loads CP/M into memory, but will not touch the program file previously loaded 
+at 0x0100. Now, at the CP/M prompt we can issue the SAVE command, and the memory contents will be saved as a file on the 
+CP/M disk and placed in the directory, ready to be used.</p>
+
+<p>Which program should we start with? The first should be the MONITOR.COM program. This is a version of the RAM 
+monitor designed to be called and used by CP/M. MONITOR.COM is 2008 bytes long. 2008 divided by 256 is 7.84, so 
+we need to save at least 8 pages of memory. After bloading it to location 0x0100 with the RAM monitor, we issue 
+this command:</p>
+
+<p>A&gt;SAVE 8 MONITOR.COM</p>
+
+<p>A DIR command will show the new file in the disk directory. Now, if we want to load a file through the port, we 
+can simply issue the CP/M command MONITOR and we will get the monitor prompt. The MONITOR program, when executed, 
+moves itself from location 0x0100 where CP/M places it, to location 0xDC00. It uses buffer space, variables, and 
+stack space in memory page 0xDB00 also. This allows us to use the memory space from 0x0100 to 0xDAFF, or 55,807 
+bytes, to load programs for saving in the CP/M file system. And, once a file is loaded into memory using the 
+MONITOR program, we can return to CP/M by issuing the cpm command at the MONITOR program prompt -- this command 
+does not affect the low program memory, just jumps to the CP/M BIOS cold entry start point, without using the cpm 
+loader program, so the memory is left undisturbed. Then we can issue a CP/M SAVE command.</p>
+
+<p>Once the MONITOR command is working, we can load the rest of the important CP/M command files. There is STAT, 
+which shows statistics for file sizes and disk room available. There is the ED command, which is a text editor. 
+I got a smile out of using it, it is like editing a ghost, because you cannot see the text you are editing -- 
+you are moving an invisible cursor through an invisible text buffer in memory to make changes, which you can see 
+afterward using the T (type) command. There is the PIP command, for file copying. There are the ASM and LOAD 
+commands for assembling 8080 files. There are also Z80 assemblers. Finally, there are hundreds of CP/M programs 
+available on-line that you can download and try. The <a href="http://www.classiccmp.org/cpmarchives/">Humongous CP/M Archive</a> 
+is a good starting point. I found the 
+chess program Sargon, and played a game against my computer. It won -- maybe I let it win, but I don't think so.</p>
+
+<h3>Future Tasks</h3>
+
+<p>Now that I have a working CP/M 2.2 system, I may try to create a better BIOS. Perhaps I will have it print out a greeting message at cold boot. I would probably remove unnecessary code, like the unused translation table. I might work on the disk read and write routines to make more efficient use of the disk. In the current configuration, a disk has 77 tracks (7 bits), 26 tracks (5 bits), and 4 disks (2 bits). That means 14 bits is enough to give each sector a unique LBA by a simple OR operation. This would be important if one wanted to use a small disk, like a 16 MB compact flash drive. I might try different disk parameters in the tables. I need to create some easy way to get files out of CP/M, probably by writing a CP/M program that loads a file into memory without executing it, and then using the MONITOR to bdump the memory containing the file to the serial port. I might try to get CP/M 3 up and running. And I will certainly play chess with my computer again.</p>
+
+<p>--Donn Stewart, July 2014</p>
+
+</article>
+<hr>
+<footer>
+  <p style="text-align:center">© 2017 by Donn Stewart</p>
+</footer>
+<script async="" src="https://www.google-analytics.com/analytics.js"></script><script src="/js/myFunction.js"></script>
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-76812818-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+<script type="text/javascript"><!--
+function SiteStats_7637(){
+var t=new Date();
+var u='http://cpuville.com/cgi-bin/sitestats.gif?p='+escape(location.href)+';r='+escape(document.referrer)+';t='+t.getTime();
+var I=new Image(1,1);  I.src=u;
+ }
+ SiteStats_7637();
+//--></script><noscript>&lt;img src="http://cpuville.com/cgi-bin/sitestats.gif?p=http%3A%2F%2Fcpuville.com%2FCode%2FCPM-on-a-new-computer.html;r=https%3A%2F%2Fwww.google.ca%2F;t=7637;" width=1 height=1 alt="sitestats"&gt;</noscript>
+
+
+
+</body></html>
