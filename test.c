@@ -134,45 +134,6 @@ int test_drive(void) {
  *
  */
 
-uint8_t startup[3] = {
-    0xc3, 0x10, 0xf8,
-};
-
-uint8_t osbuf[0x100] = {
-    0xc3, 0x00, 0xf8, 0x00, 0x00, 0xc3, 0x06, 0xe4
-};
-
-static uint8_t biosmem[16];
-MEMFUNC(biosfunc, pos, params) {
-    static const char *funcs[16] = {
-        "WBOOT",
-        "CONST",
-        "CONIN",
-        "CONOUT",
-        "LIST",
-        "PUNCH",
-        "READER",
-        "HOME",
-        "SELDSK",
-        "SETTRK",
-        "SETSEC",
-        "SETDMA",
-        "READ",
-        "WRITE",
-        "PRSTAT",
-        "SECTRN",
-    };
-
-    fprintf(stderr, "Error: Bios function %s called.\n", funcs[pos]);
-    exit(EXIT_FAILURE);
-}
-
-static uint8_t bootmem[1] = { 0 };
-MEMFUNC(bootfunc, pos, params) {
-    uint8_t *ram = params;
-    memcpy(ram, osbuf, 8);
-}
-
 #include "examples/hardware/drive/drive.h"
 
 int test_cpm(void) {
@@ -210,25 +171,25 @@ int test_cpm(void) {
         exit(EXIT_FAILURE);
     }
 
+    //Preload CP/M into Memory
+    //Todo: Write bootoader that reads CP/M from drive
     memset(ram, 0, 62 * 1024);
-    memcpy(ram, startup, 3);
+    memcpy(ram, jmp, 3);
     memcpy(ram + 0xDC00, cpm, 0x1C00);
 
-    //Load Bios
-    memspace_t bootspace = {&bootfunc, &bootfunc, ram, ram, bootmem, 0xF810, 1, MMAP_READ};
+    //Create Memory Spaces
     memspace_t drivespace = DRIVE_MEMSPACE(drive, 0xffe0);
 
     //Start emulation
     vm_init(&cpu);
     vm_loadram(&cpu, 0x0000, 62 * 1024, ram);
-    vm_loadio(&cpu, &bootspace);
     vm_loadio(&cpu, &drivespace);
-    vm_loadrom(&cpu, 0xf811, 3, jmp);
     mmap_print(&cpu.memory);
 
     vm_run(&cpu);
     //vm_debug(&cpu);
-    vm_destroy(&cpu);
 
+    vm_destroy(&cpu);
+    drive_eject(&drive);
     return 0;
 }

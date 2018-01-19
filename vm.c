@@ -128,22 +128,11 @@ int vm_debug(cpu_t *obj) {
     add_bp(0);
     //add_bp(0xdf98);
     //add_bp(0xdff8);
-    add_bp(0xdc00);         // CCP START
-    add_bp(0xdf6b);         // CCP MID
-    add_bp(0xdf7f);         // CCP CHECK INPUT
-
-    add_bp(0xf083);         // RSTDSK
-    add_bp(0xf021);         // LOGINDRV
-    add_bp(0xead2);         // BITMAP2
-    add_bp(0xeada);         // BITMAP2: RETZ
 
     add_bp(0xe1ad);         // SAVE
     add_bp(0xe1c5);         // SAVE: JP Z, SAVE3
     //add_bp(0xed24);         // GETEMPTY
     //add_bp(0xeb2d);         // FINDNXT
-
-    //add_bp(0xf224);         // SETDMA
-    add_bp(0xf2c5);         // READ
 
     while(!obj->halt) {
         char *carrystr = (CPU_BIT_TEST(obj, CPU_CARRY_POS)) ? " C" : "NC";
