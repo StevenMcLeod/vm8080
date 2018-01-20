@@ -8,5 +8,3 @@ add_executable(vm2 ${SOURCE_FILES})
 
 #add_custom_command(TARGET vm2 PRE_BUILD COMMAND /bin/bash -c ./makebin.sh)
 #add_custom_target(prog.bin DEPENDS prog.asm)
-
-# examples/hardware/i8251/i8251.c examples/hardware/i8251/i8251.h

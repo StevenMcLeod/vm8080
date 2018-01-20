@@ -129,7 +129,7 @@ int test_drive(void) {
 }
 
 /*
- *  CPM TEST
+ *  CPM TEST W/ DRIVE
  *
  *
  */
