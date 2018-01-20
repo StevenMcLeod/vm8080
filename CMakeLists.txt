@@ -3,7 +3,7 @@ project(vm8080)
 
 set(CMAKE_C_STANDARD 99)
 
-set(SOURCE_FILES main.c vm.c vm.h vminst.c vminst.h cpu.h mmap.c mmap.h mmap.c mmap.h examples/hardware/mul/mul.c examples/hardware/mul/mul.h main.c bitset.h examples/hardware/uart/uart.c examples/hardware/uart/uart.h examples/hardware/drive/drive.c examples/hardware/drive/drive.h test.c test.h)
+set(SOURCE_FILES main.c vm.c vm.h vminst.c vminst.h cpu.h mmap.c mmap.h mmap.c mmap.h examples/hardware/mul/mul.c examples/hardware/mul/mul.h main.c bitset.h examples/hardware/drive/drive.c examples/hardware/drive/drive.h test.c test.h)
 add_executable(vm2 ${SOURCE_FILES})
 
 #add_custom_command(TARGET vm2 PRE_BUILD COMMAND /bin/bash -c ./makebin.sh)

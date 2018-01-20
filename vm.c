@@ -129,10 +129,15 @@ int vm_debug(cpu_t *obj) {
     //add_bp(0xdf98);
     //add_bp(0xdff8);
 
-    add_bp(0xe1ad);         // SAVE
-    add_bp(0xe1c5);         // SAVE: JP Z, SAVE3
+    add_bp(0xf0ec);         // FCREATE
+    add_bp(0xed3d);         // GETEMPTY: RET Z
     //add_bp(0xed24);         // GETEMPTY
-    //add_bp(0xeb2d);         // FINDNXT
+    add_bp(0xeb2d);         // FINDNXT
+    add_bp(0xeb93);         // FINDNXT: Success
+    add_bp(0xeb94);         // FNDNXT6
+    add_bp(0xe9d6);         // DIRREAD
+
+    //add_bp(0xead2);         // CHECKDIR E9C0
 
     while(!obj->halt) {
         char *carrystr = (CPU_BIT_TEST(obj, CPU_CARRY_POS)) ? " C" : "NC";

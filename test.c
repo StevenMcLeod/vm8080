@@ -11,14 +11,15 @@
 #include "mmap.h"
 #include "cpu.h"
 #include "vm.h"
+#include "examples/hardware/drive/drive.h"
 
 /*
- *  UART TEST
+ *  RAW MODE TEST
  *
  *
  */
 
-#include "examples/hardware/uart/uart.h"
+//#include "examples/hardware/uart/uart.h"
 
 static int init_term(struct termios *term) {
     struct termios term_new;
@@ -48,7 +49,7 @@ static int init_term(struct termios *term) {
 }
 
 static inline int end_term(struct termios *term) {
-    tcsetattr(STDIN_FILENO, TCSANOW, term);
+    return tcsetattr(STDIN_FILENO, TCSANOW, term);
 }
 
 int test_uart(void) {
@@ -71,6 +72,7 @@ int test_uart(void) {
 exit:
     vm_destroy(&cpu);
     end_term(&t);
+    return 0;
 }
 
 /*
@@ -78,8 +80,6 @@ exit:
  *
  *
  */
-
-#include "examples/hardware/drive/drive.h"
 
 int test_drive(void) {
     const char *filename = "../examples/cpm/testdisk.img";
@@ -134,8 +134,6 @@ int test_drive(void) {
  *
  */
 
-#include "examples/hardware/drive/drive.h"
-
 int test_cpm(void) {
     cpu_t cpu;
     struct drive_t drive;
@@ -180,16 +178,21 @@ int test_cpm(void) {
     //Create Memory Spaces
     memspace_t drivespace = DRIVE_MEMSPACE(drive, 0xffe0);
 
+    //Change terminal settings
+    //struct termios orig;
+    //init_term(&orig);
+
     //Start emulation
     vm_init(&cpu);
     vm_loadram(&cpu, 0x0000, 62 * 1024, ram);
     vm_loadio(&cpu, &drivespace);
     mmap_print(&cpu.memory);
 
-    vm_run(&cpu);
-    //vm_debug(&cpu);
+    //vm_run(&cpu);
+    vm_debug(&cpu);
 
     vm_destroy(&cpu);
     drive_eject(&drive);
+    //end_term(&orig);
     return 0;
 }

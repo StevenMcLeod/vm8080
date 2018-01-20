@@ -164,7 +164,7 @@ int mmap_add(mmap_t *obj, const memspace_t *elem) {
 }
 
 int mmap_remove(mmap_t *obj, uint16_t origin, uint16_t size) {
-
+    return -1;
 }
 
 int mmap_valid(mmap_t *obj, uint16_t addr, uint8_t flags) {
