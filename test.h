@@ -12,5 +12,6 @@ typedef void (*funcptr_v)(void);
 int test_uart(void);
 int test_drive(void);
 int test_cpm(void);
+int test_con(void);
 
 #endif //VM8080_TEST_H

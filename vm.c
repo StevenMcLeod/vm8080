@@ -129,6 +129,11 @@ int vm_debug(cpu_t *obj) {
     //add_bp(0xdf98);
     //add_bp(0xdff8);
 
+    add_bp(0xf083);         // RESDSK
+
+    // BITMAP2
+
+    /*
     add_bp(0xf0ec);         // FCREATE
     add_bp(0xed3d);         // GETEMPTY: RET Z
     //add_bp(0xed24);         // GETEMPTY
@@ -136,6 +141,7 @@ int vm_debug(cpu_t *obj) {
     add_bp(0xeb93);         // FINDNXT: Success
     add_bp(0xeb94);         // FNDNXT6
     add_bp(0xe9d6);         // DIRREAD
+     */
 
     //add_bp(0xead2);         // CHECKDIR E9C0
 

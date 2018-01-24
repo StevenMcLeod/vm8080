@@ -35,10 +35,13 @@
 #define DRIVE_RES_WRITEPROT (1 << 2)
 
 //Based on 8-inch IBM PC Compatible Single Density Single Sided 250.25KB Disk (SDSS)
-#define DRIVE_SECTOR_SIZE       128
-#define DRIVE_SECTOR_COUNT      26
-#define DRIVE_HEAD_COUNT        1
-#define DRIVE_CYLINDER_COUNT    77
+#define DRIVE_QTY_SECTOR        26
+#define DRIVE_QTY_HEAD          1
+#define DRIVE_QTY_CYLINDER      77
+
+#define DRIVE_SIZE_SECTOR       128
+#define DRIVE_SIZE_HEAD         (DRIVE_SIZE_SECTOR * DRIVE_QTY_SECTOR)
+#define DRIVE_SIZE_CYLINDER     (DRIVE_SIZE_HEAD * DRIVE_QTY_HEAD)
 
 
 #define DRIVE_MEMSPACE(obj, origin) {&drive_rd, &drive_wr, &(obj), &(obj), (obj).regs, (origin), DRIVE_BUF_SIZE, MMAP_RDWR}
@@ -46,7 +49,7 @@
 struct drive_t {
     /* Implementation */
     FILE *floppy;         // Data File
-    uint8_t sector_buffer[DRIVE_SECTOR_SIZE];
+    uint8_t sector_buffer[DRIVE_SIZE_SECTOR];
     int cnt;            // Index into buffer
     int state;
     uint8_t writemode;

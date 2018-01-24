@@ -100,7 +100,7 @@ int test_drive(void) {
     mmap_write(&mmap, DRIVE_POS_DATA, 0);
     mmap_write(&mmap, DRIVE_POS_DATA, 1);
 
-    for(int i = 0; i < DRIVE_SECTOR_SIZE; ++i) {
+    for(int i = 0; i < DRIVE_SIZE_SECTOR; ++i) {
         mmap_write(&mmap, DRIVE_POS_DATA, 0xFF - i);
     }
 
@@ -112,7 +112,7 @@ int test_drive(void) {
     mmap_write(&mmap, DRIVE_POS_DATA, 0);
     mmap_write(&mmap, DRIVE_POS_DATA, 1);
 
-    for(int i = 0; i < DRIVE_SECTOR_SIZE; ++i) {
+    for(int i = 0; i < DRIVE_SIZE_SECTOR; ++i) {
         uint8_t ch = mmap_read(&mmap, DRIVE_POS_DATA);
         if(i % 16 == 0) {
             putchar('\n');
@@ -164,7 +164,7 @@ int test_cpm(void) {
 
     //Init Drive
     drive_init(&drive);
-    if(drive_load(&drive, "../examples/cpm/formatdisk.img", 1) == -1) {
+    if(drive_load(&drive, "../examples/cpm/cpmdisk.img", 1) == -1) {
         fprintf(stderr, "Error opening disk image");
         exit(EXIT_FAILURE);
     }
@@ -188,11 +188,28 @@ int test_cpm(void) {
     vm_loadio(&cpu, &drivespace);
     mmap_print(&cpu.memory);
 
-    //vm_run(&cpu);
-    vm_debug(&cpu);
+    vm_run(&cpu);
+    //vm_debug(&cpu);
 
     vm_destroy(&cpu);
     drive_eject(&drive);
     //end_term(&orig);
+    return 0;
+}
+
+int test_con(void) {
+    cpu_t cpu;
+
+    struct termios orig;
+    init_term(&orig);
+
+    vm_init(&cpu);
+    if(vm_loadrom_file(&cpu, 0, 7, "../examples/program/contest/con.bin") == -1) {
+        exit(EXIT_FAILURE);
+    }
+
+    vm_run(&cpu);
+    vm_destroy(&cpu);
+    end_term(&orig);
     return 0;
 }

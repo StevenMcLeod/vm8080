@@ -644,7 +644,7 @@ CMMND1:	LD	SP,CCPSTACK	;set stack straight.
 ;
 CMMND2:	LD	DE,TBUFF
 	CALL	DMASET		;set standard dma address.
-	CALL	GETDSK
+	CALL	GETDSKf
 	LD	(CDRIVE),A	;set current drive.
 	CALL	CONVFST		;convert name typed in.
 	CALL	NZ,SYNERR	;wild cards are not allowed.

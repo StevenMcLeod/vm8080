@@ -1,6 +1,7 @@
 #include "vminst.h"
 #include "bitset.h"
 #include <stdbool.h>
+#include <unistd.h>
 
 #define NIBBLE_LO(n) ((n) & 0x0F)
 #define NIBBLE_HI(n) ((n) & 0xF0)
@@ -335,7 +336,10 @@ void vm_pop(cpu_t *obj, int mode) {
 void vm_in(cpu_t *obj) {
     uint8_t port = vm_getop8(obj);
     int c = getchar();
+    //char c;
+    //int rn = read(STDIN_FILENO, &c, 1);
     if(c == -1) {
+    //if(rn == 0) {
         vm_terminate(3, "Unexpected EOF", obj);
     }
     obj->reg_a = (uint8_t) c;
@@ -344,6 +348,7 @@ void vm_in(cpu_t *obj) {
 void vm_out(cpu_t *obj) {
     uint8_t port = vm_getop8(obj);
     putchar(obj->reg_a);
+    //write(STDOUT_FILENO, &obj->reg_a, 1);
 }
 
 void vm_xchg(cpu_t *obj) {

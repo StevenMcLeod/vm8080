@@ -178,7 +178,7 @@ void drive_sm_wr(struct drive_t *obj) {
             // Get the cylinder position
         case STATE_GETC:
             // Check data validity
-            if(datareg >= DRIVE_CYLINDER_COUNT) {
+            if(datareg >= DRIVE_QTY_CYLINDER) {
                 BITS_SET(obj->result, DRIVE_RES_BADPARAM);
             } else {
                 obj->cylinder = datareg;
@@ -203,10 +203,10 @@ void drive_sm_wr(struct drive_t *obj) {
             obj->qty = datareg;
 
             // Check data validity
-            if(obj->sector + obj->qty >= DRIVE_SECTOR_COUNT) {
+            if(obj->sector >= DRIVE_QTY_SECTOR) {
                 BITS_SET(obj->result, DRIVE_RES_BADPARAM);
                 obj->state = STATE_RESULT;
-            } else if(obj->head >= DRIVE_HEAD_COUNT) {
+            } else if(obj->head >= DRIVE_QTY_HEAD) {
                 BITS_SET(obj->result, DRIVE_RES_BADPARAM);
                 obj->state = STATE_RESULT;
             } else if(obj->cmd == DRIVE_CMD_WRITE && !obj->writemode) {
@@ -270,15 +270,15 @@ void drive_runcmd(struct drive_t *obj) {
 void drive_readfile(struct drive_t *obj) {
     if(obj->cnt == 0) {
         drive_set_filepos(obj);
-        fread(obj->sector_buffer, DRIVE_SECTOR_SIZE, 1, obj->floppy);
+        fread(obj->sector_buffer, DRIVE_SIZE_SECTOR, 1, obj->floppy);
     }
 
     obj->regs[DRIVE_POS_DATA] = obj->sector_buffer[obj->cnt];
-    if(obj->cnt == DRIVE_SECTOR_SIZE - 1) {
+    if(obj->cnt == DRIVE_SIZE_SECTOR - 1) {
         obj->cnt = 0;
         ++obj->sector;
 
-        if(obj->sector == DRIVE_SECTOR_COUNT) {
+        if(obj->sector == DRIVE_QTY_SECTOR) {
             obj->sector = 0;
             obj->qty = 0;
         } else {
@@ -291,13 +291,13 @@ void drive_readfile(struct drive_t *obj) {
 
 void drive_writefile(struct drive_t *obj) {
     obj->sector_buffer[obj->cnt] = obj->regs[DRIVE_POS_DATA];
-    if(obj->cnt == DRIVE_SECTOR_SIZE - 1) {
+    if(obj->cnt == DRIVE_SIZE_SECTOR - 1) {
         drive_set_filepos(obj);
-        fwrite(obj->sector_buffer, DRIVE_SECTOR_SIZE, 1, obj->floppy);
+        fwrite(obj->sector_buffer, DRIVE_SIZE_SECTOR, 1, obj->floppy);
         obj->cnt = 0;
         ++obj->sector;
 
-        if(obj->sector == DRIVE_SECTOR_COUNT) {
+        if(obj->sector == DRIVE_QTY_SECTOR) {
             obj->sector = 0;
             obj->qty = 0;
         } else {
@@ -312,11 +312,15 @@ void drive_format(struct drive_t *obj);
 void drive_scan(struct drive_t *obj, int scanmode);
 
 //void drive_seek(struct drive_t *obj) {
-//    long filepos = (long) obj->cylinder * DRIVE_SECTOR_SIZE * DRIVE_SECTOR_COUNT * DRIVE_HEAD_COUNT;
+//    long filepos = (long) obj->cylinder * DRIVE_SIZE_SECTOR * DRIVE_QTY_SECTOR * DRIVE_QTY_HEAD;
 //    fseek(obj->floppy, filepos, SEEK_SET);
 //}
 
 void drive_set_filepos(struct drive_t *obj) {
-    long filepos = (long) obj->cylinder * (long) obj->head * (long) obj->sector * DRIVE_SECTOR_SIZE;
+    long filepos =  
+        (long) (obj->sector * DRIVE_SIZE_SECTOR) + 
+        (long) (obj->head * DRIVE_SIZE_HEAD) +
+        (long) (obj->cylinder * DRIVE_SIZE_CYLINDER);
+    
     fseek(obj->floppy, filepos, SEEK_SET);
 }
