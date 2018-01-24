@@ -13,8 +13,8 @@
 // 2: Register Decoder
 
 // Disk is read in this fashion:
-// A sector contains 512 bytes.
-// After all 9 sectors in a track are read, the head pos increments and the sector pos returns to 0.
+// A sector contains 128 bytes.
+// After all 26 sectors in a track are read, the head pos increments and the sector pos returns to 0.
 // After all 1 heads are read, the cylinder pos increments and the head pos returns to 0.
 
 enum {
@@ -255,8 +255,8 @@ void drive_runcmd(struct drive_t *obj) {
     switch(obj->cmd) {
         case DRIVE_CMD_READ:        drive_readfile(obj); break;
         case DRIVE_CMD_WRITE:       drive_writefile(obj); break;
-        case DRIVE_CMD_READTRACK:   break;//drive_readmultiple(obj); break;
-        case DRIVE_CMD_FORMAT:      break;//drive_writemultipe(obj); break;
+        case DRIVE_CMD_READTRACK:   obj->qty = DRIVE_QTY_SECTOR; drive_readfile(obj); break;
+        case DRIVE_CMD_FORMAT:      break;//drive_format(obj); break;
         case DRIVE_CMD_SCANEQ:      break;//drive_scan(obj, SCAN_EQ); break;
         case DRIVE_CMD_SCANLE:      break;//drive_scan(obj, SCAN_LE); break;
         case DRIVE_CMD_SCANGE:      break;//drive_scan(obj, SCAN_GE); break;
@@ -316,11 +316,12 @@ void drive_scan(struct drive_t *obj, int scanmode);
 //    fseek(obj->floppy, filepos, SEEK_SET);
 //}
 
+// Todo: What happens if seek is outside file range?
 void drive_set_filepos(struct drive_t *obj) {
-    long filepos =  
-        (long) (obj->sector * DRIVE_SIZE_SECTOR) + 
+    long filepos =
+        (long) (obj->sector * DRIVE_SIZE_SECTOR) +
         (long) (obj->head * DRIVE_SIZE_HEAD) +
         (long) (obj->cylinder * DRIVE_SIZE_CYLINDER);
-    
+
     fseek(obj->floppy, filepos, SEEK_SET);
 }

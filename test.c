@@ -141,6 +141,17 @@ int test_cpm(void) {
     uint8_t *ram;
     uint8_t jmp[3] = {0xc3, 0x00, 0xf2};
 
+    FILE *m80bin = fopen("/Users/Steven/Downloads/m80.com", "rb");
+    if(!m80bin) {
+        exit(EXIT_FAILURE);
+    }
+    fseek(m80bin, 0, SEEK_END);
+    long m80size = ftell(m80bin);
+    rewind(m80bin);
+    uint8_t m80[m80size];
+    fread(m80, m80size, 1, m80bin);
+
+
     //Load CP/M
     FILE *cpmbin = fopen("../examples/cpm/CPM22.bin", "rb");
     if(!cpmbin) {
@@ -173,6 +184,7 @@ int test_cpm(void) {
     //Todo: Write bootoader that reads CP/M from drive
     memset(ram, 0, 62 * 1024);
     memcpy(ram, jmp, 3);
+    memcpy(ram + 0x100, m80, m80size);
     memcpy(ram + 0xDC00, cpm, 0x1C00);
 
     //Create Memory Spaces
