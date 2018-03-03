@@ -12,6 +12,7 @@
 #include "cpu.h"
 #include "vm.h"
 #include "examples/hardware/drive/drive.h"
+#include "examples/hardware/term/term.h"
 
 /*
  *  RAW MODE TEST
@@ -137,6 +138,7 @@ int test_drive(void) {
 int test_cpm(void) {
     cpu_t cpu;
     struct drive_t drive;
+    struct term_t term;
     uint8_t cpm[0x1C00];
     uint8_t *ram;
     uint8_t jmp[3] = {0xc3, 0x00, 0xf2};
@@ -179,6 +181,7 @@ int test_cpm(void) {
         fprintf(stderr, "Error opening disk image");
         exit(EXIT_FAILURE);
     }
+    term_init(&term);
 
     //Preload CP/M into Memory
     //Todo: Write bootoader that reads CP/M from drive
@@ -189,16 +192,20 @@ int test_cpm(void) {
 
     //Create Memory Spaces
     memspace_t drivespace = DRIVE_MEMSPACE(drive, 0xffe0);
+    memspace_t termspace = TERM_MEMSPACE(term, 0);
 
     //Change terminal settings
     //struct termios orig;
     //init_term(&orig);
+    setvbuf(stdout, NULL, _IONBF, 0);
 
     //Start emulation
     vm_init(&cpu);
     vm_loadram(&cpu, 0x0000, 62 * 1024, ram);
-    vm_loadio(&cpu, &drivespace);
+    vm_loadio(&cpu, &termspace);
+    vm_loadmemio(&cpu, &drivespace);
     mmap_print(&cpu.memory);
+    mmap_print(&cpu.io);
 
     vm_run(&cpu);
     //vm_debug(&cpu);
@@ -212,8 +219,9 @@ int test_cpm(void) {
 int test_con(void) {
     cpu_t cpu;
 
-    struct termios orig;
-    init_term(&orig);
+    //struct termios orig;
+    //init_term(&orig);
+    setvbuf(stdout, NULL, _IONBF, 0);
 
     vm_init(&cpu);
     if(vm_loadrom_file(&cpu, 0, 7, "../examples/program/contest/con.bin") == -1) {
@@ -222,6 +230,6 @@ int test_con(void) {
 
     vm_run(&cpu);
     vm_destroy(&cpu);
-    end_term(&orig);
+    //end_term(&orig);
     return 0;
 }

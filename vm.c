@@ -37,6 +37,7 @@ int vm_init(cpu_t *obj) {
     memset(obj, 0, sizeof(cpu_t));
     obj->reg_f = CPU_FLAG_DEFAULT;
     mmap_init(&obj->memory);
+    mmap_init(&obj->io);
     return 0;
 }
 
@@ -90,10 +91,23 @@ exit_return:
 }
 
 int vm_loadio(cpu_t *obj, const memspace_t *space) {
-    return mmap_add(&obj->memory, space);
+    return mmap_add(&obj->io, space);
 }
 
 unsigned vm_loadio_arr(cpu_t *obj, const memspace_t *space, unsigned len) {
+    for(unsigned i = 0; i < len; ++i) {
+        if(mmap_add(&obj->io, &space[i]) == -1)
+            return i;
+    }
+
+    return len;
+}
+
+int vm_loadmemio(cpu_t *obj, const memspace_t *space) {
+    return mmap_add(&obj->memory, space);
+}
+
+unsigned vm_loadmemio_arr(cpu_t *obj, const memspace_t *space, unsigned len) {
     for(unsigned i = 0; i < len; ++i) {
         if(mmap_add(&obj->memory, &space[i]) == -1)
             return i;
@@ -110,6 +124,7 @@ int vm_reset(cpu_t *obj) {
 
 int vm_destroy(cpu_t *obj) {
     mmap_destroy(&obj->memory);
+    mmap_destroy(&obj->io);
     return 0;
 }
 

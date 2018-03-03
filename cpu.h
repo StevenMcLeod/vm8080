@@ -91,6 +91,7 @@ typedef struct {
 
     /* Memory Map */
     mmap_t memory;
+    mmap_t io;
 } cpu_t;
 
 enum {

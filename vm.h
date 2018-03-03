@@ -23,5 +23,7 @@ int vm_loadrom_file(cpu_t *obj, uint16_t origin, uint16_t len, const char *fn);
 
 int vm_loadio(cpu_t *obj, const memspace_t *space);
 unsigned vm_loadio_arr(cpu_t *obj, const memspace_t *space, unsigned len);
+int vm_loadmemio(cpu_t *obj, const memspace_t *space);
+unsigned vm_loadmemio_arr(cpu_t *obj, const memspace_t *space, unsigned len);
 
 #endif //VM8080_VM_H

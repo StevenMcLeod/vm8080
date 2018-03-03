@@ -22,6 +22,8 @@ static void     vm_putmem8(cpu_t *obj, uint16_t addr, uint8_t data);
 static void     vm_putmem16(cpu_t *obj, uint16_t addr, uint16_t data);
 static uint8_t  vm_getop8(cpu_t *obj);
 static uint16_t vm_getop16(cpu_t *obj);
+static uint8_t  vm_getio8(cpu_t *obj, uint16_t addr);
+static void     vm_putio8(cpu_t *obj, uint16_t addr, uint8_t data);
 
 //Parameter Access
 static uint16_t vm_getregpair(cpu_t *obj, int mode);
@@ -335,19 +337,22 @@ void vm_pop(cpu_t *obj, int mode) {
 
 void vm_in(cpu_t *obj) {
     uint8_t port = vm_getop8(obj);
-    int c = getchar();
+    uint8_t val = vm_getio8(obj, port);
+    obj->reg_a = val;
+    //int c = getchar();
     //char c;
     //int rn = read(STDIN_FILENO, &c, 1);
-    if(c == -1) {
+    //if(c == -1) {
     //if(rn == 0) {
-        vm_terminate(3, "Unexpected EOF", obj);
-    }
-    obj->reg_a = (uint8_t) c;
+        //vm_terminate(3, "Unexpected EOF", obj);
+    //}
+    //obj->reg_a = (uint8_t) c;
 }
 
 void vm_out(cpu_t *obj) {
     uint8_t port = vm_getop8(obj);
-    putchar(obj->reg_a);
+    vm_putio8(obj, port, obj->reg_a);
+    //putchar(obj->reg_a);
     //write(STDOUT_FILENO, &obj->reg_a, 1);
 }
 
@@ -444,6 +449,15 @@ uint16_t vm_getop16(cpu_t *obj) {
     uint8_t hb = mmap_read(&obj->memory, obj->reg_pc++);
     uint16_t w = (uint16_t) (lb) | (uint16_t) (hb << 8);
     return w;
+}
+
+uint8_t vm_getio8(cpu_t *obj, uint16_t addr) {
+    uint8_t b = mmap_read(&obj->io, addr);
+    return b;
+}
+
+void vm_putio8(cpu_t *obj, uint16_t addr, uint8_t data) {
+    mmap_write(&obj->io, addr, data);
 }
 
 //Parameter Access

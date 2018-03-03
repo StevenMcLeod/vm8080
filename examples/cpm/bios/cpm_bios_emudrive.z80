@@ -82,7 +82,10 @@ GOCPM:
         jp      CCP
 
 B_CONST:
-        ld      a, 0ffh
+        ; 0 for empty, 1 for full
+        in      a, (1)
+        cpl     a
+        inc     a
         ret
 
 B_CONIN:
