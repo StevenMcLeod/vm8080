@@ -42,13 +42,13 @@ int vm_init(cpu_t *obj) {
 }
 
 int vm_loadrom(cpu_t *obj, uint16_t origin, uint16_t len, uint8_t *ptr) {
-    memspace_t space = {0, 0, 0, 0, ptr, origin, len, MMAP_READ};
+    memspace_t space = {0, 0, 0, 0, ptr, origin, len, MMAP_READ, "ROM"};
     return mmap_add(&obj->memory, &space);
 }
 
 int vm_loadram(cpu_t *obj, uint16_t origin, uint16_t len, uint8_t *ptr) {
     uint8_t flags = MMAP_RDWR | (ptr ? 0 : MMAP_ALLOCFREE);
-    memspace_t space = {0, 0, 0, 0, ptr, origin, len, flags};
+    memspace_t space = {0, 0, 0, 0, ptr, origin, len, flags, "RAM"};
     return mmap_add(&obj->memory, &space);
 }
 
@@ -80,7 +80,7 @@ int vm_loadrom_file(cpu_t *obj, uint16_t origin, uint16_t len, const char *fn) {
         memset(ptr + flen, 0, len - flen);
     }
 
-    memspace_t space = {0, 0, 0, 0, ptr, origin, len, MMAP_READ | MMAP_FREE};
+    memspace_t space = {0, 0, 0, 0, ptr, origin, len, MMAP_READ | MMAP_FREE, "FILEROM"};
     retcode = mmap_add(&obj->memory, &space);
 
 exit_file:

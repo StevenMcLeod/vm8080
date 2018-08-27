@@ -23,6 +23,7 @@ typedef struct {
     uint8_t *memory;
     uint16_t origin, size;
     uint8_t flags;
+    const char *name;
 } memspace_t;
 
 typedef struct _memnode {

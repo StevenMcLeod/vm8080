@@ -2,6 +2,7 @@
 // Created by Steven on 18-Jan-18.
 //
 
+#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -22,41 +23,10 @@
 
 //#include "examples/hardware/uart/uart.h"
 
-static int init_term(struct termios *term) {
-    struct termios term_new;
-
-    if(!isatty(STDIN_FILENO)) {
-        fprintf(stderr, "Error: Not a tty\n");
-        return -1;
-    }
-
-    if(tcgetattr(STDIN_FILENO, term)) {
-        fprintf(stderr, "Error: Could not get term attr\n");
-        return -1;
-    }
-
-    term_new = *term;
-
-    term_new.c_lflag &= ~(ICANON | ECHO);
-    term_new.c_cc[VTIME] = 0;
-    term_new.c_cc[VMIN] = 1;
-
-    if(tcsetattr(STDIN_FILENO, TCSANOW, &term_new)) {
-        fprintf(stderr, "Error: Could not set term attr\n");
-        return -1;
-    }
-
-    return 0;
-}
-
-static inline int end_term(struct termios *term) {
-    return tcsetattr(STDIN_FILENO, TCSANOW, term);
-}
-
 int test_uart(void) {
     struct termios t;
     cpu_t cpu;
-    if(init_term(&t)) {
+    if(term_rawmode(&t)) {
         return 0;
     }
     vm_init(&cpu);
@@ -72,7 +42,7 @@ int test_uart(void) {
 
 exit:
     vm_destroy(&cpu);
-    end_term(&t);
+    term_restore(&t);
     return 0;
 }
 
@@ -142,7 +112,7 @@ int test_cpm(void) {
     uint8_t cpm[0x1C00];
     uint8_t *ram;
     uint8_t jmp[3] = {0xc3, 0x00, 0xf2};
-
+/*
     FILE *m80bin = fopen("/Users/Steven/Downloads/m80.com", "rb");
     if(!m80bin) {
         exit(EXIT_FAILURE);
@@ -152,7 +122,7 @@ int test_cpm(void) {
     rewind(m80bin);
     uint8_t m80[m80size];
     fread(m80, m80size, 1, m80bin);
-
+*/
 
     //Load CP/M
     FILE *cpmbin = fopen("../examples/cpm/CPM22.bin", "rb");
@@ -181,23 +151,18 @@ int test_cpm(void) {
         fprintf(stderr, "Error opening disk image");
         exit(EXIT_FAILURE);
     }
-    term_init(&term);
+    term_init(&term, "term_logfile.txt");
 
     //Preload CP/M into Memory
     //Todo: Write bootoader that reads CP/M from drive
     memset(ram, 0, 62 * 1024);
     memcpy(ram, jmp, 3);
-    memcpy(ram + 0x100, m80, m80size);
+//    memcpy(ram + 0x100, m80, m80size);
     memcpy(ram + 0xDC00, cpm, 0x1C00);
 
     //Create Memory Spaces
     memspace_t drivespace = DRIVE_MEMSPACE(drive, 0xffe0);
     memspace_t termspace = TERM_MEMSPACE(term, 0);
-
-    //Change terminal settings
-    //struct termios orig;
-    //init_term(&orig);
-    setvbuf(stdout, NULL, _IONBF, 0);
 
     //Start emulation
     vm_init(&cpu);
@@ -207,29 +172,44 @@ int test_cpm(void) {
     mmap_print(&cpu.memory);
     mmap_print(&cpu.io);
 
+    //Change terminal settings
+    struct termios orig;
+    term_rawmode(&orig);
+//    setvbuf(stdout, NULL, _IONBF, 0);
+
     vm_run(&cpu);
     //vm_debug(&cpu);
 
     vm_destroy(&cpu);
     drive_eject(&drive);
-    //end_term(&orig);
+    term_close(&term);
+    term_restore(&orig);
     return 0;
 }
 
 int test_con(void) {
     cpu_t cpu;
 
-    //struct termios orig;
-    //init_term(&orig);
-    setvbuf(stdout, NULL, _IONBF, 0);
-
     vm_init(&cpu);
-    if(vm_loadrom_file(&cpu, 0, 7, "../examples/program/contest/con.bin") == -1) {
+    if(vm_loadrom_file(&cpu, 0, -1, "../examples/program/contest/contest.bin") == -1) {
+        fprintf(stderr, "Could not open contest file\n");
         exit(EXIT_FAILURE);
     }
 
+    struct term_t term;
+    term_init(&term, "term_logfile.txt");
+    memspace_t termspace = TERM_MEMSPACE(term, 0);
+    vm_loadio(&cpu, &termspace);
+
+    struct termios orig;
+    term_rawmode(&orig);
+//    setvbuf(stdout, NULL, _IONBF, 0);
+
+    mmap_print(&cpu.memory);
+    mmap_print(&cpu.io);
+
     vm_run(&cpu);
     vm_destroy(&cpu);
-    //end_term(&orig);
+    term_restore(&orig);
     return 0;
 }

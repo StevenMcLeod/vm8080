@@ -192,7 +192,7 @@ void mmap_print(mmap_t *obj) {
         char writec = (index->elem.flags & MMAP_WRITE) ? 'w' : ' ';
         char allocc = (index->elem.flags & MMAP_ALLOC) ? 'a' : ' ';
         char freec = (index->elem.flags & MMAP_FREE) ? 'f' : ' ';
-        printf("Origin: 0x%04hx Size: 0x%04hx Flags: %c%c%c%c\n", index->elem.origin, index->elem.size, readc, writec, allocc, freec);
+        printf("Origin: 0x%04hx Size: 0x%04hx Flags: %c%c%c%c %16s\n", index->elem.origin, index->elem.size, readc, writec, allocc, freec, index->elem.name);
         index = index->next;
     }
 }

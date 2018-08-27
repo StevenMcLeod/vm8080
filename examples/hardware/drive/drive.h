@@ -44,7 +44,7 @@
 #define DRIVE_SIZE_CYLINDER     (DRIVE_SIZE_HEAD * DRIVE_QTY_HEAD)
 
 
-#define DRIVE_MEMSPACE(obj, origin) {&drive_rd, &drive_wr, &(obj), &(obj), (obj).regs, (origin), DRIVE_BUF_SIZE, MMAP_RDWR}
+#define DRIVE_MEMSPACE(obj, origin) {&drive_rd, &drive_wr, &(obj), &(obj), (obj).regs, (origin), DRIVE_BUF_SIZE, MMAP_RDWR, "DRIVE"}
 
 struct drive_t {
     /* Implementation */

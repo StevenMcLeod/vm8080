@@ -116,10 +116,10 @@ enum {
 };
 
 enum {
-    COND_Z,
     COND_NZ,
-    COND_C,
+    COND_Z,
     COND_NC,
+    COND_C,
     COND_PO,
     COND_PE,
     COND_P,

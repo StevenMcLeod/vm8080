@@ -89,6 +89,9 @@ B_CONST:
         ret
 
 B_CONIN:
+        in      a, (1)
+        or      a, a
+        jp      z, B_CONIN
         in      a, (0)
         and     a, 7fh
         ret
